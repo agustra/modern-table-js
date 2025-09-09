@@ -23,15 +23,15 @@ Modern, lightweight, vanilla JavaScript table library with **zero dependencies**
 ### CDN
 ```html
 <!-- CSS -->
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@latest/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@latest/responsive.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@latest/themes.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/themes.css" rel="stylesheet">
 
 <!-- JavaScript (ES Module) -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@latest/core/ModernTable.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/core/ModernTable.js"></script>
 
 <!-- JavaScript (UMD) -->
-<script src="https://cdn.jsdelivr.net/npm/modern-table-js@latest/dist/modern-table.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/dist/modern-table.min.js"></script>
 ```
 
 ### NPM

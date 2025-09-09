@@ -1,6 +1,6 @@
 {
   "name": "modern-table-js",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Modern, lightweight, vanilla JavaScript table library with DataTables-compatible API",
   "main": "dist/modern-table.min.js",
   "module": "core/ModernTable.js",
@@ -53,5 +53,5 @@
     "last 2 versions",
     "not dead"
   ],
-  "cdn": "https://cdn.jsdelivr.net/npm/modern-table-js@1.0.1/dist/modern-table.min.js"
+  "cdn": "https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/dist/modern-table.min.js"
 }
