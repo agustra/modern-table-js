@@ -1,0 +1,57 @@
+{
+  "name": "modern-table-js",
+  "version": "1.0.0",
+  "description": "Modern, lightweight, vanilla JavaScript table library with DataTables-compatible API",
+  "main": "dist/modern-table.min.js",
+  "module": "core/ModernTable.js",
+  "types": "types/index.d.ts",
+  "files": [
+    "dist/",
+    "core/",
+    "plugins/",
+    "components/",
+    "utils/",
+    "*.css",
+    "types/"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "lint": "eslint src/",
+    "docs": "jsdoc -c jsdoc.conf.json"
+  },
+  "keywords": [
+    "table",
+    "datatable",
+    "vanilla-js",
+    "responsive",
+    "modern",
+    "zero-dependencies",
+    "laravel",
+    "bootstrap"
+  ],
+  "author": "ModernTable Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/modern-table/modern-table-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/modern-table/modern-table-js/issues"
+  },
+  "homepage": "https://modern-table.js.org",
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.0.0",
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "jsdoc": "^4.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "cdn": "https://cdn.jsdelivr.net/npm/modern-table-js@1.0.0/dist/modern-table.min.js"
+}
