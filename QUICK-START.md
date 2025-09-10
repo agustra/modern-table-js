@@ -19,10 +19,10 @@ Get up and running with ModernTable.js in 5 minutes!
 ### Option 2: CDN
 ```html
 <!-- CSS -->
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/modern-table.css" rel="stylesheet">
 
 <!-- JavaScript -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.2/core/ModernTable.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/core/ModernTable.js"></script>
 ```
 
 ## 📋 Basic Example
