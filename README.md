@@ -399,7 +399,6 @@ Contributions are welcome! Please open an issue or submit a pull request.
 - 📋 **[Export Quick Reference](./EXPORT-QUICK-REFERENCE.md)** - Quick reference card
 - 🎨 **[CSS & Icons Guide](./CSS-ICONS-GUIDE.md)** - Styling & framework integration
 - 📸 **[Screenshots](./SCREENSHOTS.md)** - Visual gallery
-- 🌐 **[Live Examples](https://github.com/agustra/modern-table-js/tree/main/examples)** - Interactive demos
 
 ## 📞 Support
 
