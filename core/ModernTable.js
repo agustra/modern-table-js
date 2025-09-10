@@ -8,7 +8,7 @@ import { ApiClient } from './ApiClient.js';
 import { StateManager } from './StateManager.js';
 import { createElement, find, findAll, addClass, removeClass, getFrameworkClasses, detectFramework } from '../utils/dom.js';
 import { debounce } from '../utils/debounce.js';
-import { applyFormatter } from '../utils/formatters.js';
+
 import { FilterPanel } from '../components/FilterPanel.js';
 import { ExportPlugin } from '../plugins/ExportPlugin.js';
 import { SelectionPlugin } from '../plugins/SelectionPlugin.js'; 
@@ -46,11 +46,13 @@ export class ModernTable extends EventEmitter {
         }
         
         // Initialize properties
-        this.data = [];
+        this.data = this.options.data || [];           // Support client-side data
+        this.originalData = [...this.data];            // Keep original for filtering
         this.filteredData = [];
         this.currentPage = 1;
-        this.totalRecords = 0;
+        this.totalRecords = this.data.length;
         this.isLoading = false;
+        this.isClientSide = !!this.options.data;       // Client-side mode flag
         this.framework = detectFramework();
         this.classes = getFrameworkClasses(this.framework);
         
@@ -68,6 +70,9 @@ export class ModernTable extends EventEmitter {
         this.reload = this.reload.bind(this);
         this.search = debounce(this.search.bind(this), this.options.searchDelay);
         
+        // Detect frameworks first
+        this.detectFrameworks();
+        
         // Initialize table
         this.init();
     }
@@ -78,6 +83,7 @@ export class ModernTable extends EventEmitter {
     static defaults = {
         // Data source
         api: null,
+        data: null,                          // Client-side data array
         
         // Columns
         columns: [],
@@ -147,38 +153,40 @@ export class ModernTable extends EventEmitter {
     };
 
     /**
-     * Initialize table
+     * Initialize table - SIMPLE OPTIMIZATION
      */
     init() {
         try {
-            // Add ModernTable class
+            // Synchronous initialization for speed
             addClass(this.element, 'modern-table');
-            
-            // Create wrapper structure
             this.createWrapper();
-            
-            // Create components
-            this.createToolbar();
             this.createTableStructure();
+            this.createToolbar();
             this.createPagination();
             this.createLoadingOverlay();
             
-            // Initialize components setelah struktur DOM siap
+            // Initialize essential components only
             this.initializeComponents();
-            
-            // Apply any pending states after components are ready
-            if (this.stateManager.pendingSearch || this.stateManager.pendingSort || this.stateManager.pendingFilters || this.stateManager.pendingColumns || this.stateManager.pendingSelection) {
-                this.stateManager.applyPendingStates();
-            }
             
             // Attach events
             this.attachEvents();
             
-            // Load saved state first, then data
+            // Apply pending states
+            if (this.stateManager.pendingSearch || this.stateManager.pendingSort || 
+                this.stateManager.pendingFilters || this.stateManager.pendingColumns || 
+                this.stateManager.pendingSelection) {
+                this.stateManager.applyPendingStates();
+            }
+            
+            // Load saved state
             this.loadSavedState();
             
-            // Load initial data
-            this.loadData();
+            // Load data based on mode
+            if (this.isClientSide) {
+                this.processClientSideData();
+            } else if (this.options.api) {
+                this.loadData();
+            }
             
         } catch (error) {
             console.error('ModernTable initialization failed:', error);
@@ -212,12 +220,12 @@ export class ModernTable extends EventEmitter {
         if (!hasFeatures) return;
         
         this.toolbar = createElement('div', {
-            className: 'modern-table-toolbar d-flex justify-content-between align-items-center mb-3'
+            className: 'modern-table-toolbar mb-3'
         });
         
         // Left: Length menu
         const leftSection = createElement('div', {
-            className: 'toolbar-left d-flex align-items-center'
+            className: 'toolbar-left'
         });
         
         if (this.options.lengthMenu && this.options.lengthMenu.length > 1) {
@@ -226,7 +234,7 @@ export class ModernTable extends EventEmitter {
         
         // Center: Buttons
         const centerSection = createElement('div', {
-            className: 'toolbar-center d-flex align-items-center gap-2'
+            className: 'toolbar-center'
         });
         
         if (this.options.buttons.length) {
@@ -235,7 +243,7 @@ export class ModernTable extends EventEmitter {
         
         // Right: Search
         const rightSection = createElement('div', {
-            className: 'toolbar-right d-flex align-items-center'
+            className: 'toolbar-right'
         });
         
         if (this.options.searching) {
@@ -357,6 +365,57 @@ export class ModernTable extends EventEmitter {
             config = this.getBuiltinButton(config);
         }
         
+        // Handle extend property - merge with built-in button
+        if (config.extend && typeof config.extend === 'string') {
+            const builtinConfig = this.getBuiltinButton(config.extend);
+            
+            // Smart merge: if custom text doesn't have icon but built-in does, preserve built-in text
+            if (config.text && builtinConfig.text) {
+                const customHasIcon = config.text.includes('<i class=') || config.text.includes('fa-');
+                const builtinHasIcon = builtinConfig.text.includes('<i class=') || builtinConfig.text.includes('fa-');
+                
+                // If built-in has icon but custom doesn't, add icon to custom text
+                if (builtinHasIcon && !customHasIcon) {
+                    const iconMatch = builtinConfig.text.match(/<i class="[^"]*"><\/i>\s*/);
+                    if (iconMatch) {
+                        config.text = iconMatch[0] + config.text;
+                    }
+                }
+            }
+            
+            // Merge built-in config with custom config (custom overrides built-in)
+            config = { ...builtinConfig, ...config };
+        }
+        // Handle custom buttons with recognizable class names (add icons if missing)
+        else if (config.text && config.className) {
+            const textHasIcon = config.text.includes('<i class=') || config.text.includes('fa-');
+            const hasFontAwesome = document.body.classList.contains('fontawesome-loaded');
+            
+            if (!textHasIcon && hasFontAwesome) {
+                // Map class names to icons
+                const iconMap = {
+                    'btn-print': '<i class="fas fa-print"></i>',
+                    'btn-copy': '<i class="fas fa-copy"></i>',
+                    'btn-csv': '<i class="fas fa-file-csv"></i>',
+                    'btn-excel': '<i class="fas fa-file-excel"></i>',
+                    'btn-pdf': '<i class="fas fa-file-pdf"></i>',
+                    'btn-download': '<i class="fas fa-download"></i>',
+                    'btn-upload': '<i class="fas fa-upload"></i>',
+                    'btn-delete': '<i class="fas fa-trash"></i>',
+                    'btn-edit': '<i class="fas fa-edit"></i>',
+                    'btn-add': '<i class="fas fa-plus"></i>'
+                };
+                
+                // Find matching icon based on class name
+                for (const [className, icon] of Object.entries(iconMap)) {
+                    if (config.className.includes(className)) {
+                        config.text = icon + ' ' + config.text;
+                        break;
+                    }
+                }
+            }
+        }
+        
         const buttonAttrs = {
             type: 'button',
             className: config.className || `${this.classes.buttonSecondary} btn-sm`,
@@ -370,7 +429,14 @@ export class ModernTable extends EventEmitter {
         
         const button = createElement('button', buttonAttrs);
         
-        if (config.action) {
+        // Prioritize extend over action (for export buttons with column filtering)
+        if (config.extend && ['csv', 'excel', 'pdf', 'print', 'copy'].includes(config.extend)) {
+            // Handle built-in export actions with exportColumns support
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleExportAction(config.extend, config);
+            });
+        } else if (config.action) {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
                 config.action(e, this, button, config);
@@ -389,45 +455,47 @@ export class ModernTable extends EventEmitter {
      * Get built-in button configuration
      */
     getBuiltinButton(type) {
+        // Check if Font Awesome is available
+        const hasFontAwesome = document.body.classList.contains('fontawesome-loaded');
+        
         const buttons = {
             copy: {
-                text: '<i class="fas fa-copy"></i> Copy',
-                className: 'btn btn-secondary btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-copy"></i> Copy' : 'Copy',
+                className: 'btn btn-secondary btn-sm btn-copy',
                 action: () => this.plugins.export?.copyToClipboard()
             },
             csv: {
-                text: '<i class="fas fa-file-csv"></i> CSV',
-                className: 'btn btn-success btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-file-csv"></i> CSV' : 'CSV',
+                className: 'btn btn-success btn-sm btn-csv',
                 action: () => this.plugins.export?.exportCSV()
             },
             excel: {
-                text: '<i class="fas fa-file-excel"></i> Excel',
-                className: 'btn btn-warning btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-file-excel"></i> Excel' : 'Excel',
+                className: 'btn btn-warning btn-sm btn-excel',
                 action: () => this.plugins.export?.exportExcel()
             },
             pdf: {
-                text: '<i class="fas fa-file-pdf"></i> PDF',
-                className: 'btn btn-danger btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-file-pdf"></i> PDF' : 'PDF',
+                className: 'btn btn-danger btn-sm btn-pdf',
                 action: () => this.plugins.export?.exportPDF()
             },
             print: {
-                text: '<i class="fas fa-print"></i> Print',
-                className: 'btn btn-info btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-print"></i> Print' : 'Print',
+                className: 'btn btn-info btn-sm btn-print',
                 action: () => this.plugins.export?.print()
             },
             colvis: {
-                text: '<i class="fas fa-columns"></i> Columns',
-                className: 'btn btn-outline-secondary btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-columns"></i> Columns' : 'Columns',
+                className: 'btn btn-outline-secondary btn-sm btn-columns',
                 action: () => this.toggleColumnVisibility(),
                 attr: { 'data-action': 'colvis' }
             },
             shortcuts: {
-                text: '<i class="fas fa-keyboard"></i>',
-                className: 'btn btn-outline-secondary btn-sm',
+                text: hasFontAwesome ? '<i class="fas fa-keyboard"></i>' : '',
+                className: 'btn btn-outline-secondary btn-sm btn-keyboard',
                 action: () => this.showKeyboardShortcuts(),
                 attr: { 
-                    'title': 'Keyboard Shortcuts (Ctrl+H)',
-                    'data-bs-toggle': 'tooltip'
+                    'title': 'Keyboard Shortcuts (Ctrl+H)'
                 }
             }
         };
@@ -507,7 +575,19 @@ export class ModernTable extends EventEmitter {
             if (this.options.ordering && column.orderable !== false) {
                 addClass(th, 'sortable');
                 th.style.cursor = 'pointer';
-                th.innerHTML += ' <i class="fas fa-sort sort-icon"></i>';
+                
+                // Support both Font Awesome and CSS icons
+                const hasFontAwesome = document.querySelector('link[href*="font-awesome"]') || 
+                                     document.querySelector('link[href*="fontawesome"]');
+                
+                if (hasFontAwesome) {
+                    th.innerHTML += ' <i class="fas fa-sort sort-icon"></i>';
+                } else {
+                    th.innerHTML += ' <span class="sort-icon"></span>';
+                }
+                
+                // Add body classes for CSS priority
+                this.detectFrameworks();
             }
             
             headerRow.appendChild(th);
@@ -573,17 +653,17 @@ export class ModernTable extends EventEmitter {
     }
 
     /**
-     * Initialize components and plugins setelah DOM structure siap
+     * Initialize components and plugins - FULL FEATURES
      */
     initializeComponents() {
-        // Initialize components (sesuai master plan)
         this.components = {};
+        this.plugins = {};
+        
+        // Initialize all plugins for fair comparison
         if (this.options.filters && this.options.filters.length > 0) {
             this.components.filterPanel = new FilterPanel(this);
         }
         
-        // Initialize plugins (sesuai master plan)
-        this.plugins = {};
         if (this.options.buttons && this.options.buttons.length > 0) {
             this.plugins.export = new ExportPlugin(this);
         }
@@ -597,40 +677,30 @@ export class ModernTable extends EventEmitter {
             try {
                 this.plugins.responsive = new ResponsivePlugin(this);
             } catch (error) {
-                console.warn('ResponsivePlugin failed to initialize:', error);
+                console.warn('ResponsivePlugin failed:', error);
                 this.options.responsive = false;
             }
         }
-        
-        // Initialize theme plugin
         if (this.options.theme) {
             try {
                 this.plugins.theme = new ThemePlugin(this);
-                // Auto-apply saved theme after initialization
-                const savedTheme = localStorage.getItem('modern-table-theme') || this.options.theme;
-                requestAnimationFrame(() => {
-                    this.plugins.theme.setTheme(savedTheme);
-                });
+                this.plugins.theme.setTheme(this.options.theme);
             } catch (error) {
-                console.warn('ThemePlugin failed to initialize:', error);
+                console.warn('ThemePlugin failed:', error);
             }
         }
-        
-        // Initialize keyboard plugin
         if (this.options.keyboard) {
             try {
                 this.plugins.keyboard = new KeyboardPlugin(this);
             } catch (error) {
-                console.warn('KeyboardPlugin failed to initialize:', error);
+                console.warn('KeyboardPlugin failed:', error);
             }
         }
-        
-        // Initialize accessibility plugin
         if (this.options.accessibility) {
             try {
                 this.plugins.accessibility = new AccessibilityPlugin(this);
             } catch (error) {
-                console.warn('AccessibilityPlugin failed to initialize:', error);
+                console.warn('AccessibilityPlugin failed:', error);
             }
         }
     }
@@ -684,6 +754,13 @@ export class ModernTable extends EventEmitter {
     async loadData() {
         const apiUrl = typeof this.apiClient.config === 'string' ? this.apiClient.config : this.apiClient.config?.url;
         if (!apiUrl) {
+            // Skip API loading if no URL configured (for static data)
+            if (this.data && this.data.length > 0) {
+                this.renderData();
+                this.updatePagination();
+                this.updateInfo();
+                return;
+            }
             console.error('No API URL configured. Config:', this.apiClient.config);
             this.showError('API URL not configured');
             return;
@@ -702,11 +779,11 @@ export class ModernTable extends EventEmitter {
                 this.updateInfo();
                 
                 this.emit('dataLoaded', this.data, {
-                total: this.totalRecords,
-                filtered: this.filteredRecords,
-                current_page: this.currentPage,
-                last_page: this.totalPages
-            });
+                    total: this.totalRecords,
+                    filtered: this.filteredRecords,
+                    current_page: this.currentPage,
+                    last_page: this.totalPages
+                });
             if (this.options.onDataLoaded) {
                 this.options.onDataLoaded(this.data, {
                     total: this.totalRecords,
@@ -715,6 +792,11 @@ export class ModernTable extends EventEmitter {
                     last_page: this.totalPages
                 });
             }
+            
+            // Apply column visibility after data is fully loaded
+            setTimeout(() => {
+                this.applyAllColumnVisibility();
+            }, 50);
             } else {
                 throw new Error(response.message || 'API returned error');
             }
@@ -732,28 +814,52 @@ export class ModernTable extends EventEmitter {
     }
 
     /**
-     * Build request parameters
+     * Build request parameters - DataTables Compatible
      */
     buildRequestParams() {
+        // Initialize draw counter if not exists
+        if (!this.drawCounter) this.drawCounter = 0;
+        this.drawCounter++;
+        
+        // DataTables format parameters
         const params = {
-            page: this.currentPage,
-            size: this.options.pageLength
+            draw: this.drawCounter,
+            start: (this.currentPage - 1) * this.options.pageLength,
+            length: this.options.pageLength
         };
         
-        // Add search (check both input and pending search)
+        // Add columns info (DataTables format - exact same as DataTables)
+        params.columns = this.options.columns.map((col, index) => ({
+            data: col.data,
+            name: col.name || col.data,
+            searchable: col.searchable !== false,
+            orderable: col.orderable !== false,
+            search: {
+                value: '',
+                regex: false
+            }
+        }));
+        
+        // Add search (DataTables format - exact same as DataTables)
         const searchTerm = this.searchInput?.value?.trim() || this.stateManager?.pendingSearch || '';
-        if (searchTerm) {
-            params.search = searchTerm;
-        }
+        params.search = {
+            value: searchTerm || '',
+            regex: false
+        };
         
-        // Add ordering (dari SortingPlugin)
-        const currentSort = this.plugins.sorting?.getCurrentSort();
+        // Add ordering (DataTables format - exact same as DataTables)
+        const currentSort = this.plugins?.sorting?.getCurrentSort();
         if (currentSort) {
-            params.order = [currentSort];
+            params.order = [{
+                column: currentSort.column,
+                dir: currentSort.dir
+            }];
+        } else {
+            params.order = [];
         }
         
-        // Add filters (dari FilterPanel)
-        const filters = this.components.filterPanel?.getFilters();
+        // Add filters as additional parameters (ModernTable enhancement)
+        const filters = this.components?.filterPanel?.getFilters();
         if (filters && Object.keys(filters).length > 0) {
             params.filters = filters;
         }
@@ -762,98 +868,96 @@ export class ModernTable extends EventEmitter {
     }
 
     /**
-     * Process API response
+     * Process API response - DataTables Compatible + Enhanced
      */
     processResponse(response) {
-        // Handle different response formats
-        if (response.data) {
+        // DataTables format (primary)
+        if (response.recordsTotal !== undefined) {
+            this.data = response.data || [];
+            this.totalRecords = response.recordsTotal;
+            this.filteredRecords = response.recordsFiltered || response.recordsTotal;
+            
+            // Calculate pagination from DataTables format
+            this.totalPages = Math.ceil(this.filteredRecords / this.options.pageLength);
+            
+            // Current page is already set in this.currentPage (from goToPage or initial)
+            // No need to calculate from response since DataTables doesn't return current page
+        }
+        // ModernTable format (fallback)
+        else if (response.data) {
             this.data = response.data;
             this.totalRecords = response.meta?.total || response.data.length;
             this.filteredRecords = response.meta?.filtered || this.totalRecords;
             this.currentPage = response.meta?.current_page || 1;
-            this.totalPages = response.meta?.last_page || 1;
-        } else if (Array.isArray(response)) {
+            this.totalPages = response.meta?.last_page || Math.ceil(this.filteredRecords / this.options.pageLength);
+        }
+        // Array format (simple)
+        else if (Array.isArray(response)) {
             this.data = response;
             this.totalRecords = response.length;
             this.filteredRecords = response.length;
-        } else {
+            this.totalPages = Math.ceil(response.length / this.options.pageLength);
+        }
+        else {
             throw new Error('Invalid response format');
         }
+        
+        // Handle optional ModernTable enhancements
+        if (response.success === false) {
+            throw new Error(response.message || 'Server returned error');
+        }
+        
+        // Store message for potential display
+        this.lastMessage = response.message;
     }
 
     /**
-     * Render table data
+     * Render table data - OPTIMIZED with DocumentFragment
      */
     renderData() {
-        // Clear existing rows
-        this.tbody.innerHTML = '';
-        
         if (!this.data || this.data.length === 0) {
             this.showNoData();
             return;
         }
         
+        // Use DocumentFragment for batch DOM operations
+        const fragment = document.createDocumentFragment();
+        
+        // Batch row creation
         this.data.forEach((rowData, index) => {
             const row = this.createRow(rowData, index);
-            this.tbody.appendChild(row);
+            fragment.appendChild(row);
         });
         
-        // Apply column visibility to newly rendered rows
+        // Single DOM update
+        this.tbody.innerHTML = '';
+        this.tbody.appendChild(fragment);
+        
+        // Apply column visibility immediately
         this.applyAllColumnVisibility();
         
-        // Setup responsive layout after data is loaded
+        // Setup responsive layout
         if (this.plugins.responsive) {
-            // Force a complete recalculation
-            setTimeout(() => {
-                this.plugins.responsive.updateAfterDataLoad();
-            }, 200);
+            this.plugins.responsive.updateAfterDataLoad();
         }
     }
 
     /**
-     * Create table row
+     * Create table row - OPTIMIZED with innerHTML building
      */
     createRow(rowData, index) {
-        const row = createElement('tr', {
-            'data-index': index
-        });
+        let rowHTML = '';
         
         // Selection column
         if (this.options.select) {
-            const td = createElement('td', {
-                className: 'select-checkbox text-center'
-            });
-            
-            const checkbox = createElement('input', {
-                type: 'checkbox',
-                className: 'form-check-input row-checkbox'
-            });
-            
-            td.appendChild(checkbox);
-            row.appendChild(td);
+            rowHTML += '<td class="select-checkbox text-center"><input type="checkbox" class="form-check-input row-checkbox"></td>';
         }
         
         // Data columns
         this.options.columns.forEach(column => {
-            const td = createElement('td');
-            
-            // Apply column classes and styles
-            if (column.className) {
-                td.className = column.className;
-            }
-            
-            if (column.style) {
-                td.style.cssText = column.style;
-            }
-            
-            if (column.id) {
-                td.id = `${column.id}-${rowData.id || index}`;
-            }
-            
-            // Get cell value
             let cellValue = this.getCellValue(rowData, column.data);
             
-            // Special handling for DT_RowIndex - calculate proper row number
+            // Special handling for DT_RowIndex
             if (column.data === 'DT_RowIndex') {
                 const start = ((this.currentPage - 1) * this.options.pageLength) + 1;
                 cellValue = start + index;
@@ -868,15 +972,19 @@ export class ModernTable extends EventEmitter {
                 }
             }
             
-            // Set content (supports HTML)
-            if (typeof cellValue === 'string' && cellValue.includes('<')) {
-                td.innerHTML = cellValue;
-            } else {
-                td.textContent = cellValue || '';
-            }
+            // Build cell HTML
+            let cellAttrs = '';
+            if (column.className) cellAttrs += ` class="${column.className}"`;
+            if (column.style) cellAttrs += ` style="${column.style}"`;
+            if (column.id) cellAttrs += ` id="${column.id}-${rowData.id || index}"`;
             
-            row.appendChild(td);
+            rowHTML += `<td${cellAttrs}>${cellValue || ''}</td>`;
         });
+        
+        // Create row element with innerHTML (faster than DOM manipulation)
+        const row = document.createElement('tr');
+        row.setAttribute('data-index', index);
+        row.innerHTML = rowHTML;
         
         return row;
     }
@@ -924,7 +1032,9 @@ export class ModernTable extends EventEmitter {
      */
     showLoading(show = true) {
         this.isLoading = show;
-        this.loadingOverlay.style.display = show ? 'flex' : 'none';
+        if (this.loadingOverlay) {
+            this.loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
     }
 
     /**
@@ -974,10 +1084,11 @@ export class ModernTable extends EventEmitter {
             className: `${this.classes.pagination} pagination-sm mb-0`
         });
         
-        // First button
+        // First button (large desktop only)
+        const isMobile = window.innerWidth <= 768;
         if (this.totalPages > 7) {
             const firstItem = createElement('li', {
-                className: `${this.classes.pageItem} ${this.currentPage <= 1 ? 'disabled' : ''}`
+                className: `${this.classes.pageItem} page-first ${this.currentPage <= 1 ? 'disabled' : ''}`
             });
             
             const firstLink = createElement('a', {
@@ -1002,10 +1113,11 @@ export class ModernTable extends EventEmitter {
             className: `${this.classes.pageItem} ${this.currentPage <= 1 ? 'disabled' : ''}`
         });
         
+        const prevText = isMobile ? '‹' : this.options.language.paginate.previous;
         const prevLink = createElement('a', {
             className: this.classes.pageLink,
             href: '#',
-            innerHTML: this.options.language.paginate.previous
+            innerHTML: prevText
         });
         
         if (this.currentPage > 1) {
@@ -1026,10 +1138,11 @@ export class ModernTable extends EventEmitter {
             className: `${this.classes.pageItem} ${this.currentPage >= this.totalPages ? 'disabled' : ''}`
         });
         
+        const nextText = isMobile ? '›' : this.options.language.paginate.next;
         const nextLink = createElement('a', {
             className: this.classes.pageLink,
             href: '#',
-            innerHTML: this.options.language.paginate.next
+            innerHTML: nextText
         });
         
         if (this.currentPage < this.totalPages) {
@@ -1042,10 +1155,10 @@ export class ModernTable extends EventEmitter {
         nextItem.appendChild(nextLink);
         pagination.appendChild(nextItem);
         
-        // Last button
+        // Last button (large desktop only)
         if (this.totalPages > 7) {
             const lastItem = createElement('li', {
-                className: `${this.classes.pageItem} ${this.currentPage >= this.totalPages ? 'disabled' : ''}`
+                className: `${this.classes.pageItem} page-last ${this.currentPage >= this.totalPages ? 'disabled' : ''}`
             });
             
             const lastLink = createElement('a', {
@@ -1071,42 +1184,89 @@ export class ModernTable extends EventEmitter {
     }
 
     /**
-     * Create page numbers with ellipsis for better desktop UX
+     * Create page numbers with responsive design
      */
     createPageNumbers(pagination) {
         const current = this.currentPage;
         const total = this.totalPages;
+        const isMobile = window.innerWidth <= 768;
         
-        if (total <= 7) {
-            // Show all pages if 7 or fewer
-            for (let i = 1; i <= total; i++) {
-                this.createPageItem(pagination, i, i === current);
-            }
-        } else {
-            // Complex pagination with ellipsis
-            if (current <= 4) {
-                // Show: 1 2 3 4 5 ... last
-                for (let i = 1; i <= 5; i++) {
-                    this.createPageItem(pagination, i, i === current);
-                }
-                this.createEllipsis(pagination);
-                this.createPageItem(pagination, total, false);
-            } else if (current >= total - 3) {
-                // Show: 1 ... (total-4) (total-3) (total-2) (total-1) total
-                this.createPageItem(pagination, 1, false);
-                this.createEllipsis(pagination);
-                for (let i = total - 4; i <= total; i++) {
+        if (isMobile) {
+            // Mobile: Show minimal pagination (max 3 page numbers)
+            if (total <= 3) {
+                // Show all pages if 3 or fewer on mobile
+                for (let i = 1; i <= total; i++) {
                     this.createPageItem(pagination, i, i === current);
                 }
             } else {
-                // Show: 1 ... (current-1) current (current+1) ... total
-                this.createPageItem(pagination, 1, false);
-                this.createEllipsis(pagination);
-                for (let i = current - 1; i <= current + 1; i++) {
+                // Mobile: Show only current page +/- 1 (max 3 numbers)
+                let start, end;
+                
+                if (current === 1) {
+                    start = 1;
+                    end = Math.min(3, total);
+                } else if (current === total) {
+                    start = Math.max(1, total - 2);
+                    end = total;
+                } else {
+                    start = Math.max(1, current - 1);
+                    end = Math.min(total, current + 1);
+                }
+                
+                // Only show first page if we're not starting from 1
+                if (start > 1) {
+                    this.createPageItem(pagination, 1, false);
+                    if (start > 2) {
+                        this.createEllipsis(pagination);
+                    }
+                }
+                
+                // Show the range
+                for (let i = start; i <= end; i++) {
                     this.createPageItem(pagination, i, i === current);
                 }
-                this.createEllipsis(pagination);
-                this.createPageItem(pagination, total, false);
+                
+                // Only show last page if we're not ending at total
+                if (end < total) {
+                    if (end < total - 1) {
+                        this.createEllipsis(pagination);
+                    }
+                    this.createPageItem(pagination, total, false);
+                }
+            }
+        } else {
+            // Desktop: Simplified pagination to prevent wrapping
+            if (total <= 5) {
+                // Show all pages if 5 or fewer
+                for (let i = 1; i <= total; i++) {
+                    this.createPageItem(pagination, i, i === current);
+                }
+            } else {
+                // Simplified pagination with ellipsis
+                if (current <= 3) {
+                    // Show: 1 2 3 4 ... last
+                    for (let i = 1; i <= 4; i++) {
+                        this.createPageItem(pagination, i, i === current);
+                    }
+                    this.createEllipsis(pagination);
+                    this.createPageItem(pagination, total, false);
+                } else if (current >= total - 2) {
+                    // Show: 1 ... (total-3) (total-2) (total-1) total
+                    this.createPageItem(pagination, 1, false);
+                    this.createEllipsis(pagination);
+                    for (let i = total - 3; i <= total; i++) {
+                        this.createPageItem(pagination, i, i === current);
+                    }
+                } else {
+                    // Show: 1 ... (current-1) current (current+1) ... total
+                    this.createPageItem(pagination, 1, false);
+                    this.createEllipsis(pagination);
+                    for (let i = current - 1; i <= current + 1; i++) {
+                        this.createPageItem(pagination, i, i === current);
+                    }
+                    this.createEllipsis(pagination);
+                    this.createPageItem(pagination, total, false);
+                }
             }
         }
     }
@@ -1253,11 +1413,12 @@ export class ModernTable extends EventEmitter {
      * Toggle column visibility (dropdown)
      */
     toggleColumnVisibility() {
-        // Remove existing dropdown first
-        const existingDropdown = find('.column-visibility-dropdown', document.body);
+        // Check if dropdown already exists and toggle
+        const existingDropdown = find('.column-visibility-dropdown', this.toolbar);
         if (existingDropdown) {
-            existingDropdown.remove();
-            return; // If we removed one, don't create new one (toggle off)
+            const isVisible = existingDropdown.style.display === 'block';
+            existingDropdown.style.display = isVisible ? 'none' : 'block';
+            return; // Toggle existing dropdown
         }
         
         // Find the colvis button to position dropdown
@@ -1270,49 +1431,62 @@ export class ModernTable extends EventEmitter {
         
         // Create and show dropdown
         const dropdown = this.createColumnVisibilityDropdown(colvisBtn);
-        document.body.appendChild(dropdown);
+        
+        // Show dropdown
+        dropdown.style.display = 'block';
     }
 
     /**
      * Create column visibility dropdown
      */
     createColumnVisibilityDropdown(triggerBtn) {
-        // Calculate position relative to trigger button
-        const btnRect = triggerBtn.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        // Create dropdown wrapper for relative positioning
+        const dropdownWrapper = createElement('div', {
+            style: 'position: relative; display: inline-block;'
+        });
+        
+        // Wrap the button
+        triggerBtn.parentNode.insertBefore(dropdownWrapper, triggerBtn);
+        dropdownWrapper.appendChild(triggerBtn);
         
         const dropdown = createElement('div', {
-            className: 'column-visibility-dropdown position-absolute bg-white border rounded shadow p-3',
+            className: 'column-visibility-dropdown',
             style: `
-                top: ${btnRect.bottom + scrollTop + 5}px;
-                left: ${btnRect.left + scrollLeft}px;
+                position: absolute;
+                top: 100%;
+                right: 0;
                 min-width: 200px;
                 max-width: 250px;
                 z-index: 1050;
+                background-color: #fff;
+                border: 1px solid #ccc;
+                border-radius: 4px;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 12px;
+                margin-top: 2px;
+                display: none;
             `
         });
         
         // Header
         const header = createElement('div', {
-            className: 'd-flex justify-content-between align-items-center mb-2 pb-2 border-bottom'
+            style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #dee2e6;'
         });
         
         const title = createElement('h6', {
-            className: 'mb-0',
+            style: 'margin: 0; font-size: 14px; font-weight: 600;',
             textContent: 'Column Visibility'
         });
         
         const closeBtn = createElement('button', {
             type: 'button',
-            className: 'btn-close btn-sm',
-            style: 'font-size: 0.8rem;'
+            innerHTML: '×',
+            style: 'background: none; border: none; font-size: 18px; cursor: pointer; padding: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;'
         });
         
         closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            dropdown.remove();
+            dropdown.style.display = 'none';
         });
         
         header.appendChild(title);
@@ -1330,7 +1504,7 @@ export class ModernTable extends EventEmitter {
             }
             
             const checkDiv = createElement('div', {
-                className: 'form-check mb-1'
+                style: 'margin-bottom: 4px; display: flex; align-items: center;'
             });
             
             // Get current visibility state from columnVisibility
@@ -1338,13 +1512,13 @@ export class ModernTable extends EventEmitter {
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.className = 'form-check-input';
+            checkbox.style.cssText = 'margin-right: 8px;';
             checkbox.id = `colvis-${index}-${Date.now()}`;
             checkbox.checked = isVisible; // Direct property assignment
             
             const label = createElement('label', {
-                className: 'form-check-label',
                 for: checkbox.id,
+                style: 'cursor: pointer; font-size: 14px;',
                 textContent: column.title || column.data
             });
             
@@ -1360,19 +1534,19 @@ export class ModernTable extends EventEmitter {
         
         // Action buttons
         const actions = createElement('div', {
-            className: 'mt-2 pt-2 border-top d-flex gap-1'
+            style: 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #dee2e6; display: flex; gap: 4px;'
         });
         
         const showAllBtn = createElement('button', {
             type: 'button',
-            className: 'btn btn-outline-primary btn-sm flex-fill',
-            textContent: 'Show All'
+            textContent: 'Show All',
+            style: 'flex: 1; padding: 4px 8px; font-size: 12px; border: 1px solid #007bff; background: #fff; color: #007bff; border-radius: 3px; cursor: pointer;'
         });
         
         const hideAllBtn = createElement('button', {
             type: 'button',
-            className: 'btn btn-outline-secondary btn-sm flex-fill',
-            textContent: 'Hide All'
+            textContent: 'Hide All',
+            style: 'flex: 1; padding: 4px 8px; font-size: 12px; border: 1px solid #6c757d; background: #fff; color: #6c757d; border-radius: 3px; cursor: pointer;'
         });
         
         showAllBtn.addEventListener('click', (e) => {
@@ -1391,10 +1565,14 @@ export class ModernTable extends EventEmitter {
         actions.appendChild(hideAllBtn);
         dropdown.appendChild(actions);
         
+        // Append dropdown to wrapper
+        const wrapper = triggerBtn.parentNode;
+        wrapper.appendChild(dropdown);
+        
         // Close dropdown when clicking outside (with proper cleanup)
         const closeHandler = (e) => {
             if (!dropdown.contains(e.target) && !triggerBtn.contains(e.target)) {
-                dropdown.remove();
+                dropdown.style.display = 'none';
                 document.removeEventListener('click', closeHandler);
             }
         };
@@ -1518,6 +1696,31 @@ export class ModernTable extends EventEmitter {
     }
 
     // Export methods moved to ExportPlugin
+
+    /**
+     * Detect available frameworks and add body classes for CSS priority
+     */
+    detectFrameworks() {
+        const body = document.body;
+        
+        // Detect Bootstrap
+        const hasBootstrap = document.querySelector('link[href*="bootstrap"]') || 
+                            window.bootstrap || 
+                            document.querySelector('.btn, .table, .form-control');
+        
+        if (hasBootstrap) {
+            body.classList.add('bootstrap-loaded');
+        }
+        
+        // Detect Font Awesome
+        const hasFontAwesome = document.querySelector('link[href*="font-awesome"]') || 
+                             document.querySelector('link[href*="fontawesome"]') || 
+                             document.querySelector('.fas, .far, .fab');
+        
+        if (hasFontAwesome) {
+            body.classList.add('fontawesome-loaded');
+        }
+    }
 
     /**
      * Load saved state
@@ -1821,6 +2024,291 @@ export class ModernTable extends EventEmitter {
         `;
         
         return html;
+    }
+
+    /**
+     * Handle export action with column filtering
+     */
+    handleExportAction(exportType, config) {
+        if (!this.plugins.export) {
+            console.warn('ExportPlugin not available');
+            return;
+        }
+        
+        // Get columns to export
+        const exportColumns = this.getExportColumns(config.exportColumns);
+        
+        // Create export options
+        const exportOptions = {
+            columns: exportColumns,
+            filename: config.filename,
+            title: config.title,
+            orientation: config.orientation,
+            pageSize: config.pageSize,
+            sheetName: config.sheetName
+        };
+        
+        // Call appropriate export method
+        switch (exportType) {
+            case 'csv':
+                this.plugins.export.exportCSV(exportOptions);
+                break;
+            case 'excel':
+                this.plugins.export.exportExcel(exportOptions);
+                break;
+            case 'pdf':
+                this.plugins.export.exportPDF(exportOptions);
+                break;
+            case 'print':
+                this.plugins.export.print(exportOptions);
+                break;
+            case 'copy':
+                this.plugins.export.copyToClipboard(exportOptions);
+                break;
+            default:
+                console.warn(`Unknown export type: ${exportType}`);
+        }
+    }
+    
+    /**
+     * Get columns for export based on exportColumns configuration
+     */
+    getExportColumns(exportColumns) {
+        if (!exportColumns) {
+            // Default: all visible columns except system columns
+            return this.options.columns
+                .filter((col, index) => {
+                    // Skip system columns
+                    if (col.data === 'DT_RowIndex') return false;
+                    // Skip hidden columns
+                    if (this.columnVisibility[index] === false) return false;
+                    // Skip action columns by default
+                    if (col.data === 'action') return false;
+                    return true;
+                })
+                .map(col => col.data);
+        }
+        
+        if (exportColumns === 'all') {
+            // All columns including hidden ones
+            return this.options.columns
+                .filter(col => col.data !== 'DT_RowIndex') // Skip only system columns
+                .map(col => col.data);
+        }
+        
+        if (exportColumns === 'visible') {
+            // Only visible columns
+            return this.options.columns
+                .filter((col, index) => {
+                    if (col.data === 'DT_RowIndex') return false;
+                    return this.columnVisibility[index] !== false;
+                })
+                .map(col => col.data);
+        }
+        
+        if (Array.isArray(exportColumns)) {
+            // Specific columns array
+            return exportColumns;
+        }
+        
+        // Fallback
+        return this.options.columns.map(col => col.data);
+    }
+
+    /**
+     * Process client-side data (filtering, sorting, pagination)
+     */
+    processClientSideData() {
+        let processedData = [...this.originalData];
+        
+        // Apply search filter
+        const searchTerm = this.searchInput?.value?.trim() || '';
+        if (searchTerm) {
+            processedData = processedData.filter(row => {
+                return this.options.columns.some(column => {
+                    const cellValue = this.getCellValue(row, column.data);
+                    return String(cellValue).toLowerCase().includes(searchTerm.toLowerCase());
+                });
+            });
+        }
+        
+        // Apply sorting
+        const currentSort = this.plugins?.sorting?.getCurrentSort();
+        if (currentSort) {
+            const column = this.options.columns[currentSort.column];
+            if (column) {
+                processedData.sort((a, b) => {
+                    const aVal = this.getCellValue(a, column.data);
+                    const bVal = this.getCellValue(b, column.data);
+                    
+                    let comparison = 0;
+                    if (aVal < bVal) comparison = -1;
+                    if (aVal > bVal) comparison = 1;
+                    
+                    return currentSort.dir === 'desc' ? -comparison : comparison;
+                });
+            }
+        }
+        
+        // Update totals
+        this.totalRecords = this.originalData.length;
+        this.filteredRecords = processedData.length;
+        this.totalPages = Math.ceil(this.filteredRecords / this.options.pageLength);
+        
+        // Apply pagination
+        const start = (this.currentPage - 1) * this.options.pageLength;
+        const end = start + this.options.pageLength;
+        this.data = processedData.slice(start, end);
+        
+        // Render data
+        this.renderData();
+        this.updatePagination();
+        this.updateInfo();
+        
+        // Emit events
+        this.emit('dataLoaded', this.data, {
+            total: this.totalRecords,
+            filtered: this.filteredRecords,
+            current_page: this.currentPage,
+            last_page: this.totalPages
+        });
+        
+        if (this.options.onDataLoaded) {
+            this.options.onDataLoaded(this.data, {
+                total: this.totalRecords,
+                filtered: this.filteredRecords,
+                current_page: this.currentPage,
+                last_page: this.totalPages
+            });
+        }
+    }
+    
+    /**
+     * Add new row (client-side only)
+     */
+    addRow(rowData) {
+        if (!this.isClientSide) {
+            console.warn('addRow() only works with client-side data');
+            return;
+        }
+        
+        this.originalData.push(rowData);
+        this.processClientSideData();
+    }
+    
+    /**
+     * Update existing row (client-side only)
+     */
+    updateRow(index, newData) {
+        if (!this.isClientSide) {
+            console.warn('updateRow() only works with client-side data');
+            return;
+        }
+        
+        if (index >= 0 && index < this.originalData.length) {
+            this.originalData[index] = { ...this.originalData[index], ...newData };
+            this.processClientSideData();
+        }
+    }
+    
+    /**
+     * Remove row (client-side only)
+     */
+    removeRow(index) {
+        if (!this.isClientSide) {
+            console.warn('removeRow() only works with client-side data');
+            return;
+        }
+        
+        if (index >= 0 && index < this.originalData.length) {
+            this.originalData.splice(index, 1);
+            this.processClientSideData();
+        }
+    }
+    
+    /**
+     * Set new data array (client-side only)
+     */
+    setData(newData) {
+        if (!this.isClientSide) {
+            console.warn('setData() only works with client-side data');
+            return;
+        }
+        
+        this.originalData = [...newData];
+        this.data = [];
+        this.currentPage = 1;
+        this.processClientSideData();
+    }
+    
+    /**
+     * Override search for client-side
+     */
+    search(term) {
+        if (this.isClientSide) {
+            // Update search input if provided
+            if (term !== undefined && this.searchInput) {
+                this.searchInput.value = term;
+            }
+            
+            this.currentPage = 1; // Reset to first page
+            this.processClientSideData();
+        } else {
+            // Server-side search (original implementation)
+            this.currentPage = 1;
+            
+            if (term !== undefined && this.searchInput) {
+                this.searchInput.value = term;
+            }
+            
+            if (this.stateManager && this.stateManager.isEnabled()) {
+                this.stateManager.save();
+            }
+            
+            this.loadData();
+        }
+    }
+    
+    /**
+     * Override goToPage for client-side
+     */
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+        
+        this.currentPage = page;
+        
+        if (this.stateManager && this.stateManager.isEnabled()) {
+            this.stateManager.save();
+        }
+        
+        if (this.isClientSide) {
+            this.processClientSideData();
+        } else {
+            this.loadData();
+        }
+    }
+    
+    /**
+     * Override changePageLength for client-side
+     */
+    changePageLength(length) {
+        if (length === -1) {
+            this.options.pageLength = -1;
+        } else {
+            this.options.pageLength = Math.max(1, length);
+        }
+        
+        this.currentPage = 1;
+        
+        if (this.stateManager && this.stateManager.isEnabled()) {
+            this.stateManager.save();
+        }
+        
+        if (this.isClientSide) {
+            this.processClientSideData();
+        } else {
+            this.loadData();
+        }
     }
 
     /**

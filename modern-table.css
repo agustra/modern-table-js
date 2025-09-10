@@ -1,228 +1,760 @@
 /**
- * ModernTable.js - Optimized CSS for better performance
+ * ModernTable.js - Standalone CSS (no framework dependency)
+ * Provides beautiful default styling like DataTables
  */
+
+/* Reset and base styles */
+.modern-table-wrapper * {
+  box-sizing: border-box;
+}
+
+/* Core table styles */
+.modern-table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  border-spacing: 0;
+  background-color: #ffffff;
+  color: #333333;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modern-table th,
+.modern-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  vertical-align: middle;
+}
+
+.modern-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;   
+  font-size: 13px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.modern-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.modern-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.modern-table tbody tr.selected {
+  background-color: #e3f2fd;
+}
+
+/* Fallback button styles (only when Bootstrap NOT loaded) */
+body:not(.bootstrap-loaded) .btn {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.42857143;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+body:not(.bootstrap-loaded) .btn:hover {
+  background-color: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+/* Compact thead for standalone mode */
+body:not(.bootstrap-loaded) .modern-table th {
+  font-size: 12px;
+  padding: 4px 8px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+body:not(.bootstrap-loaded) .modern-table td {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* Small button size fallback */
+body:not(.bootstrap-loaded) .modern-table-wrapper .btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+/* Column visibility dropdown (fallback when Bootstrap not available) */
+body:not(.bootstrap-loaded) .column-visibility-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 8px 0;
+  margin: 2px 0 0;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: none;
+}
+
+body:not(.bootstrap-loaded) .column-visibility-dropdown.show {
+  display: block;
+}
+
+body:not(.bootstrap-loaded) .column-visibility-item {
+  display: block;
+  width: 100%;
+  padding: 6px 16px;
+  clear: both;
+  font-weight: 400;
+  color: #333;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  background-color: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+body:not(.bootstrap-loaded) .column-visibility-item:hover {
+  background-color: #f8f9fa;
+}
+
+body:not(.bootstrap-loaded) .column-visibility-item input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* Dropdown positioning container */
+body:not(.bootstrap-loaded) .dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Dropdown toggle button */
+body:not(.bootstrap-loaded) .dropdown-toggle::after {
+  content: "";
+  display: inline-block;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-top: 4px solid;
+  border-right: 4px solid transparent;
+  border-bottom: 0;
+  border-left: 4px solid transparent;
+}
+
+/* Fallback form controls (only when Bootstrap not available) */
+body:not(.bootstrap-loaded) .modern-table-wrapper input,
+body:not(.bootstrap-loaded) .modern-table-wrapper select {
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  color: #555;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+body:not(.bootstrap-loaded) .modern-table-wrapper input:focus,
+body:not(.bootstrap-loaded) .modern-table-wrapper select:focus {
+  border-color: #66afe9;
+  outline: 0;
+  box-shadow: 0 0 0 2px rgba(102, 175, 233, 0.25);
+}
+
+body:not(.bootstrap-loaded) .modern-table-wrapper select {
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px 10px;
+  padding-right: 30px;
+  appearance: none;
+}
 
 /* Core table styles */
 .modern-table-wrapper {
-    position: relative;
-    width: 100%;
+  position: relative;
+  width: 100%;
 }
 
 .modern-table {
-    width: 100%;
-    margin-bottom: 0;
+  width: 100%;
+  margin-bottom: 0;
 }
 
 /* Toolbar styles - 3 section layout */
 .modern-table-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    min-height: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  min-height: 40px;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 /* Left section: Length menu */
 .toolbar-left {
-    flex: 0 0 auto;
-    min-width: 150px;
+  flex: 0 0 auto;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
 }
 
 /* Center section: Buttons */
 .toolbar-center {
-    flex: 1 1 auto;
-    justify-content: center;
-    gap: 0.5rem;
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 /* Right section: Search */
 .toolbar-right {
-    flex: 0 0 auto;
-    min-width: 250px;
-    justify-content: flex-end;
+  flex: 0 0 auto;
+  min-width: 250px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 /* Length menu */
 .modern-table-length {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
 }
 
 .modern-table-length select {
-    width: auto;
-    min-width: 70px;
+  width: auto;
+  min-width: 70px;
 }
 
 /* Search box */
 .modern-table-search {
-    width: 100%;
-    max-width: 250px;
+  width: 100%;
+  max-width: 250px;
 }
 
 .modern-table-search input {
-    width: 100%;
+  width: 100%;
 }
 
 /* Buttons */
 .toolbar-center .btn {
-    margin: 0 2px;
+  margin: 0 2px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 992px) {
-    .toolbar-right {
-        min-width: 200px;
-    }
-    
-    .modern-table-search {
-        max-width: 200px;
-    }
-}
-
-@media (max-width: 768px) {
-    .modern-table-toolbar {
-        flex-direction: column;
-        gap: 0.75rem;
-        align-items: stretch;
-    }
-    
-    .toolbar-left,
-    .toolbar-center,
-    .toolbar-right {
-        flex: none;
-        min-width: auto;
-        justify-content: center;
-    }
-    
-    .toolbar-right {
-        order: -1; /* Search di atas pada mobile */
-    }
-    
-    .modern-table-search {
-        max-width: none;
-    }
-}
-
-/* Pagination styles */
+/* Pagination styles - DataTables-like */
 .modern-table-pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
 }
 
 .modern-table-info {
-    color: #6c757d;
-    font-size: 0.875rem;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* Fallback pagination controls (only when Bootstrap not available) */
+body:not(.bootstrap-loaded) .pagination {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 4px;
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+body:not(.bootstrap-loaded) .page-item {
+  display: flex;
+}
+
+body:not(.bootstrap-loaded) .page-link {
+  position: relative;
+  display: block;
+  padding: 8px 12px;
+  margin-left: -1px;
+  line-height: 1.25;
+  color: #007bff;
+  text-decoration: none;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  transition: all 0.2s ease;
+  min-width: 44px;
+  text-align: center;
+}
+
+body:not(.bootstrap-loaded) .page-link:hover {
+  z-index: 2;
+  color: #0056b3;
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+}
+
+body:not(.bootstrap-loaded) .page-item:first-child .page-link {
+  margin-left: 0;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+body:not(.bootstrap-loaded) .page-item:last-child .page-link {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+body:not(.bootstrap-loaded) .page-item.active .page-link {
+  z-index: 3;
+  color: #fff;
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+body:not(.bootstrap-loaded) .page-item.disabled .page-link {
+  color: #6c757d;
+  pointer-events: none;
+  background-color: #fff;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 /* Loading overlay - optimized */
 .modern-table-loading {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.8);
-    z-index: 1000;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: none; /* Remove expensive filter */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 1000;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: none; /* Remove expensive filter */
 }
 
 /* Sortable columns */
 .sortable {
-    cursor: pointer;
-    user-select: none;
+  cursor: pointer;
+  user-select: none;
 }
 
 .sortable:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .sort-icon {
-    margin-left: 0.5rem;
-    opacity: 0.5;
-    transition: opacity 0.2s ease;
+  margin-left: 0.5rem;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
 }
 
 .sortable:hover .sort-icon {
-    opacity: 1;
+  opacity: 1;
 }
 
 /* Selection styles */
 .select-checkbox {
-    width: 40px;
-    text-align: center;
+  width: 40px;
+  text-align: center;
 }
 
 .row-checkbox {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 /* Performance optimizations */
 .modern-table tbody tr {
-    transform: translateZ(0); /* Force hardware acceleration */
+  transform: translateZ(0); /* Force hardware acceleration */
 }
 
 .modern-table td {
-    will-change: auto;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .modern-table-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .modern-table-search {
-        max-width: none;
-        margin-bottom: 1rem;
-    }
-    
-    .modern-table-pagination {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
+  will-change: auto;
 }
 
 /* Filter panel styles */
 .modern-table-filters {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    display: block !important;
-    visibility: visible !important;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
 }
 
-.modern-table-filters .row {
-    margin: 0;
+.modern-table-filters > div {
+  flex: 0 0 auto;
+  min-width: 120px;
 }
 
-.modern-table-filters .col-md-3 {
-    padding: 0 0.5rem;
-    margin-bottom: 0.5rem;
+.modern-table-filters label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+  font-size: 12px;
+  color: #495057;
+}
+
+/* Fallback badge styles (only when Bootstrap not available) */
+body:not(.bootstrap-loaded) .badge {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 3px;
+}
+
+body:not(.bootstrap-loaded) .bg-success {
+  background-color: #28a745;
+  color: #fff;
+}
+
+body:not(.bootstrap-loaded) .bg-danger {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+body:not(.bootstrap-loaded) .bg-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+body:not(.bootstrap-loaded) .bg-info {
+  background-color: #17a2b8;
+  color: #fff;
+}
+
+body:not(.bootstrap-loaded) .bg-secondary {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+/* Fallback utility classes (only when Bootstrap not available) */
+body:not(.bootstrap-loaded) .text-center {
+  text-align: center;
+}
+
+body:not(.bootstrap-loaded) .text-muted {
+  color: #6c757d;
+}
+
+body:not(.bootstrap-loaded) .d-flex {
+  display: flex;
+}
+
+body:not(.bootstrap-loaded) .justify-content-between {
+  justify-content: space-between;
+}
+
+body:not(.bootstrap-loaded) .align-items-center {
+  align-items: center;
+}
+
+body:not(.bootstrap-loaded) .gap-2 {
+  gap: 8px;
+}
+
+body:not(.bootstrap-loaded) .mb-3 {
+  margin-bottom: 16px;
+}
+
+body:not(.bootstrap-loaded) .mt-3 {
+  margin-top: 16px;
+}
+
+body:not(.bootstrap-loaded) .small {
+  font-size: 12px;
+}
+
+/* Default CSS Icons - No external library needed */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
+/* CSS sort icons (only when Font Awesome not available) */
+body:not(.fontawesome-loaded) .sort-icon::before {
+  content: "⇅";
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+body:not(.fontawesome-loaded) .sort-asc::before {
+  content: "↑";
+  opacity: 1;
+}
+
+body:not(.fontawesome-loaded) .sort-desc::before {
+  content: "↓";
+  opacity: 1;
+}
+
+/* CSS button icons (only when Font Awesome not available) */
+body:not(.fontawesome-loaded) .btn-copy::before {
+  content: "📋";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-csv::before {
+  content: "📊";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-excel::before {
+  content: "📈";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-pdf::before {
+  content: "📄";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-print::before {
+  content: "🖨";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-columns::before {
+  content: "☰";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-delete::before {
+  content: "🗑";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-edit::before {
+  content: "✏";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-view::before {
+  content: "👁";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-add::before {
+  content: "➕";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-search::before {
+  content: "🔍";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-filter::before {
+  content: "🔽";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-clear::before {
+  content: "🧹";
+  margin-right: 4px;
+}
+
+body:not(.fontawesome-loaded) .btn-keyboard::before {
+  content: "⌨";
+  margin-right: 4px;
+}
+
+/* Alternative text-based icons for better compatibility */
+.icon-sort::before {
+  content: "⇅";
+}
+.icon-sort-asc::before {
+  content: "↑";
+}
+.icon-sort-desc::before {
+  content: "↓";
+}
+.icon-copy::before {
+  content: "⧉";
+}
+.icon-csv::before {
+  content: "≡";
+}
+.icon-excel::before {
+  content: "⊞";
+}
+.icon-pdf::before {
+  content: "⬜";
+}
+.icon-print::before {
+  content: "⎙";
+}
+.icon-columns::before {
+  content: "☰";
+}
+.icon-delete::before {
+  content: "✕";
+}
+.icon-edit::before {
+  content: "✎";
+}
+.icon-view::before {
+  content: "👁";
+}
+.icon-add::before {
+  content: "＋";
+}
+.icon-search::before {
+  content: "🔍";
+}
+.icon-filter::before {
+  content: "▼";
+}
+.icon-clear::before {
+  content: "⌫";
+}
+.icon-keyboard::before {
+  content: "⌨";
+}
+.icon-loading::before {
+  content: "⟳";
+  animation: spin 1s linear infinite;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Checkbox icons */
+.checkbox-icon::before {
+  content: "☐";
+  font-size: 14px;
+}
+
+.checkbox-icon.checked::before {
+  content: "☑";
+}
+
+/* Status icons */
+.status-active::before {
+  content: "●";
+  color: #28a745;
+  margin-right: 4px;
+}
+
+.status-inactive::before {
+  content: "●";
+  color: #dc3545;
+  margin-right: 4px;
+}
+
+.status-pending::before {
+  content: "●";
+  color: #ffc107;
+  margin-right: 4px;
+}
+
+/* Pagination icons */
+/* .page-first::before {
+  content: "⇤";
+} */
+.page-prev::before {
+  content: "‹";
+}
+.page-next::before {
+  content: "›";
+}
+/* .page-last::before {
+  content: "⇥";
+} */
+
+/* Search clear button */
+.search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: none;
+}
+
+.search-clear::before {
+  content: "✕";
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.search-clear:hover::before {
+  color: #dc3545;
+}
+
+/* Show clear button when input has value */
+.modern-table-search input:not(:placeholder-shown) + .search-clear {
+  display: block;
 }
 
 /* Dark theme support */
 [data-bs-theme="dark"] .modern-table-loading {
-    background: rgba(33, 37, 41, 0.8);
+  background: rgba(33, 37, 41, 0.8);
 }
 
 [data-bs-theme="dark"] .sortable:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 [data-bs-theme="dark"] .modern-table-filters {
-    background-color: #343a40;
-    border-color: #495057;
+  background-color: #343a40;
+  border-color: #495057;
+}
+
+[data-bs-theme="dark"] .search-clear::before {
+  color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .search-clear:hover::before {
+  color: #dc3545;
 }

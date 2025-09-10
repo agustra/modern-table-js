@@ -38,10 +38,10 @@ export class ResponsivePlugin {
         // Attach resize listener
         this._resizeListener();
         
-        // Initial calculation
+        // Initial calculation - faster
         setTimeout(() => {
             this._resize();
-        }, 100);
+        }, 50);
     }
 
     /**
@@ -393,7 +393,7 @@ export class ResponsivePlugin {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
                 this._resize();
-            }, 100);
+            }, 150); // Reduce frequency
         };
         
         window.addEventListener('resize', resizeHandler);
@@ -404,13 +404,10 @@ export class ResponsivePlugin {
      * Update after data load
      */
     updateAfterDataLoad() {
-        // Wait for DOM to be fully rendered
+        // Faster DOM update
         setTimeout(() => {
-            // Recalculate column priorities based on actual rendered content
-            this._columnsVisiblity();
-            // Then resize
-            this._resize();
-        }, 150);
+            this._resize(); // Skip recalculation
+        }, 50);
     }
 
     /**

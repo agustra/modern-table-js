@@ -1,0 +1,25 @@
+# Screenshots Directory
+
+This directory contains visual assets for the NPM package.
+
+## Available Screenshots:
+
+### ✅ Current Screenshots:
+- [x] **desktop-bootstrap.png** (63KB) - Main table with Bootstrap styling
+- [x] **mobile-responsive.png** (388KB) - Mobile responsive view
+- [x] **export-buttons.png** (239KB) - Export functionality demonstration
+
+### 📋 Future Screenshots (Optional):
+- [ ] desktop-standalone.png - Table without frameworks  
+- [ ] desktop-dark.png - Dark theme
+- [ ] column-visibility.png - Column toggle dropdown
+- [ ] search-filters.png - Search and filtering
+- [ ] row-selection.png - Multi-select functionality
+
+## How to Add Screenshots:
+
+1. Take screenshots at 1200x800px (desktop) or 375x667px (mobile)
+2. Save as PNG format
+3. Optimize file size (< 500KB)
+4. Update README.md with image references
+5. Test that images display correctly on NPM

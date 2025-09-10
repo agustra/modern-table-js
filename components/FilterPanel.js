@@ -330,7 +330,7 @@ export class FilterPanel {
     }
 
     /**
-     * Set filters from state (without triggering reload)
+     * Set filters from state and trigger reload
      */
     setFilters(filters) {
         this.filters = { ...filters };
@@ -340,10 +340,17 @@ export class FilterPanel {
             const input = find(`[data-filter="${filterKey}"]`, this.filtersContainer);
             if (input && filters[filterKey]) {
                 input.value = filters[filterKey];
+                // Trigger change event to update UI
+                if (input.tagName === 'SELECT') {
+                    input.dispatchEvent(new Event('change'));
+                }
             }
         });
         
-
+        // Trigger reload to apply restored filters
+        setTimeout(() => {
+            this.table.loadData();
+        }, 100);
     }
 
     /**

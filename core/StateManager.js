@@ -18,16 +18,19 @@ export class StateManager {
     save() {
         if (!this.table.options.stateSave) return;
 
+        const filters = this.table.components.filterPanel?.getFilters() || {};
         const state = {
             page: this.table.currentPage,
             pageLength: this.table.options.pageLength,
             search: this.table.searchInput?.value?.trim() || '',
             order: this.table.plugins.sorting?.getCurrentSort() || null,
-            filters: this.table.components.filterPanel?.getFilters() || {},
+            filters: filters,
             columns: this.getColumnStates(),
             selection: this.table.plugins.selection?.getSelectedRowIds() || [],
             timestamp: Date.now()
         };
+
+
 
         try {
             localStorage.setItem(this.storageKey, JSON.stringify(state));
@@ -160,6 +163,7 @@ export class StateManager {
 
             // Apply pending filters using direct method
             if (this.pendingFilters && this.table.components?.filterPanel) {
+    
                 if (typeof this.table.components.filterPanel.setFilters === 'function') {
                     this.table.components.filterPanel.setFilters(this.pendingFilters);
                 } else {
@@ -239,10 +243,12 @@ export class StateManager {
     getColumnStates() {
         // Use columnVisibility state if available, otherwise check DOM
         if (this.table.columnVisibility) {
-            return Object.keys(this.table.columnVisibility).map(index => ({
+            const states = Object.keys(this.table.columnVisibility).map(index => ({
                 index: parseInt(index),
                 visible: this.table.columnVisibility[index] !== false
             }));
+
+            return states;
         }
         
         // Fallback to DOM inspection
@@ -264,6 +270,8 @@ export class StateManager {
      */
     applyColumnStates(states) {
         try {
+
+            
             // Initialize columnVisibility if not exists
             if (!this.table.columnVisibility) {
                 this.table.columnVisibility = {};
@@ -277,9 +285,19 @@ export class StateManager {
                 const columnIndex = state.index;
                 if (typeof columnIndex === 'number' && typeof state.visible === 'boolean') {
                     this.table.columnVisibility[columnIndex] = state.visible;
-                    this.table.applyColumnVisibility(columnIndex, state.visible);
+                    // Apply visibility immediately
+                    if (this.table.applyColumnVisibility) {
+                        this.table.applyColumnVisibility(columnIndex, state.visible);
+                    }
                 }
             });
+            
+            // Force apply all column visibility after data is loaded
+            setTimeout(() => {
+                if (this.table.applyAllColumnVisibility) {
+                    this.table.applyAllColumnVisibility();
+                }
+            }, 200);
         } catch (error) {
             console.warn('Error applying column states:', error);
         }
