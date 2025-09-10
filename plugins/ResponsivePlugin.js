@@ -55,8 +55,29 @@ export class ResponsivePlugin {
             let priority = column.responsivePriority;
             
             if (priority === undefined) {
-                // Simple reverse order: rightmost = highest priority number = hide first
-                priority = 10 - index;
+                // Dynamic priority based on column characteristics
+                priority = 5000; // Base priority
+                
+                // Higher priority (lower number = show first) for important columns
+                if (column.orderable === false && index === 0) {
+                    priority = 10000; // First non-orderable (usually ID/No) - never hide
+                }
+                
+                if (column.className && column.className.includes('text-center')) {
+                    priority -= 1000; // Center columns often important (status, badges)
+                }
+                
+                if (column.render) {
+                    priority -= 500; // Rendered columns often important
+                }
+                
+                // Lower priority (higher number = hide first) for less important columns
+                if (column.orderable === false && column.title && column.title.toLowerCase().includes('action')) {
+                    priority = 1000; // Action columns can be hidden first
+                }
+                
+                // Adjust by position (earlier columns slightly more important)
+                priority += index * 100;
             }
             
             this.s.columns.push({
@@ -79,8 +100,33 @@ export class ResponsivePlugin {
         // Use column.width if specified
         if (column.width) return parseInt(column.width);
         
-        // Use fixed width of 120px for all columns for stability
-        return 120;
+        // Use column.style width if specified
+        if (column.style && column.style.includes('width:')) {
+            const match = column.style.match(/width:\s*(\d+)px/);
+            if (match) return parseInt(match[1]);
+        }
+        
+        // More conservative calculation
+        const titleLength = (column.title || column.data || '').length;
+        let baseWidth = Math.max(titleLength * 10, 80); // 10px per character, min 80px
+        
+        // Add padding for content that might be wider than title
+        baseWidth += 30; // Extra space for content
+        
+        // Adjust based on column characteristics
+        if (column.className && column.className.includes('text-center')) {
+            baseWidth = Math.min(baseWidth, 120); // Center columns
+        }
+        
+        if (column.orderable === false) {
+            baseWidth = Math.min(baseWidth, 140); // Non-sortable columns
+        }
+        
+        // More conservative caps
+        const isMobile = window.innerWidth <= 768;
+        const maxWidth = isMobile ? 140 : 180;
+        
+        return Math.min(baseWidth, maxWidth);
     }
 
     /**
@@ -116,9 +162,24 @@ export class ResponsivePlugin {
     _columnsVisiblity_calc() {
         // Get available width based on container, not table
         const containerWidth = this.table.wrapper.offsetWidth;
-        // Reserve space for padding, borders, and potential control column
-        const reservedWidth = 80; // More conservative reservation
-        const availableWidth = Math.max(containerWidth - reservedWidth, 300); // Minimum 300px
+        const isMobile = window.innerWidth <= 768;
+        
+        // More conservative space reservation
+        let reservedWidth = 80; // Base reservation
+        
+        // Add space for selection column if exists
+        if (this.table.options.select) {
+            reservedWidth += 50;
+        }
+        
+        // Add space for expand button and scrollbar on mobile
+        if (isMobile) {
+            reservedWidth += 40;
+        }
+        
+        // Conservative space usage
+        const minWidth = isMobile ? 280 : 320;
+        const availableWidth = Math.max(containerWidth - reservedWidth, minWidth);
         
         // Sort columns: higher priority last (hide first)
         const columns = [...this.s.columns].sort((a, b) => b.priority - a.priority);
@@ -180,8 +241,21 @@ export class ResponsivePlugin {
      * Show all columns
      */
     _showAllColumns() {
-        const allCells = this.table.element.querySelectorAll('th:not(.dtr-control), td:not(.dtr-control)');
-        allCells.forEach(cell => {
+        // Show all header cells (including column search row)
+        const headerCells = this.table.element.querySelectorAll('thead th:not(.dtr-control)');
+        headerCells.forEach(cell => {
+            cell.style.display = '';
+        });
+        
+        // Show all body cells
+        const bodyCells = this.table.element.querySelectorAll('tbody td:not(.dtr-control)');
+        bodyCells.forEach(cell => {
+            cell.style.display = '';
+        });
+        
+        // Show all footer cells
+        const footerCells = this.table.element.querySelectorAll('tfoot th:not(.dtr-control), tfoot td:not(.dtr-control)');
+        footerCells.forEach(cell => {
             cell.style.display = '';
         });
     }
@@ -194,16 +268,28 @@ export class ResponsivePlugin {
         let domIndex = columnIndex;
         if (this.table.options.select) domIndex++; // Selection column is first
         
-        // Hide header
-        const headerCells = this.table.thead.querySelectorAll('th');
-        if (headerCells[domIndex]) {
-            headerCells[domIndex].style.display = 'none';
-        }
+        // Hide all header rows (including column search row)
+        const headerRows = this.table.thead.querySelectorAll('tr');
+        headerRows.forEach(row => {
+            const cells = row.querySelectorAll('th');
+            if (cells[domIndex]) {
+                cells[domIndex].style.display = 'none';
+            }
+        });
         
         // Hide body cells
         const bodyRows = this.table.tbody.querySelectorAll('tr:not(.dtr-details)');
         bodyRows.forEach(row => {
             const cells = row.querySelectorAll('td');
+            if (cells[domIndex]) {
+                cells[domIndex].style.display = 'none';
+            }
+        });
+        
+        // Hide footer cells if exists
+        const footerRows = this.table.element.querySelectorAll('tfoot tr');
+        footerRows.forEach(row => {
+            const cells = row.querySelectorAll('th, td');
             if (cells[domIndex]) {
                 cells[domIndex].style.display = 'none';
             }
@@ -257,17 +343,24 @@ export class ResponsivePlugin {
      * Toggle details display (DataTables method)
      */
     _detailsDisplay(row, rowIndex) {
+        console.log('🔄 Toggle details for row:', rowIndex, row);
+        
         const details = this._detailsObj(row);
         const expandBtn = row.querySelector('.expand-btn');
         
+        console.log('🔍 Current state - isShown:', details.child.isShown());
+        
         if (details.child.isShown()) {
             // Hide details
+            console.log('🙈 Hiding details');
             details.child.hide();
             row.classList.remove('dtr-expanded');
             if (expandBtn) expandBtn.innerHTML = '+';
         } else {
             // Show details
+            console.log('👁️ Showing details for row:', rowIndex);
             const content = this._detailsRenderer(rowIndex);
+            console.log('📋 Generated content:', content);
             details.child.show(content);
             row.classList.add('dtr-expanded');
             if (expandBtn) expandBtn.innerHTML = '−';
@@ -282,16 +375,37 @@ export class ResponsivePlugin {
             child: {
                 isShown: () => {
                     const next = row.nextElementSibling;
-                    return next && next.classList.contains('dtr-details');
+                    const isShown = next && next.classList.contains('dtr-details');
+                    console.log('🔍 Detail isShown:', isShown, next);
+                    return isShown;
                 },
                 show: (content) => {
+                    console.log('📋 Creating detail row with content:', content);
                     const detailRow = this._createDetailRow(content);
+                    console.log('📋 Detail row created:', detailRow);
+                    
+                    // Remove existing detail first
+                    const existing = row.nextElementSibling;
+                    if (existing && existing.classList.contains('dtr-details')) {
+                        console.log('🗑️ Removing existing detail row:', existing);
+                        existing.remove();
+                    }
+                    
+                    console.log('📋 Inserting detail row. Parent:', row.parentNode);
+                    console.log('📋 Next sibling before insert:', row.nextSibling);
+                    
                     row.parentNode.insertBefore(detailRow, row.nextSibling);
+                    
+                    console.log('📋 Detail row inserted. Next sibling now:', row.nextElementSibling);
+                    console.log('📋 Detail row in DOM:', document.contains(detailRow));
+                    console.log('📋 Detail row visible:', detailRow.offsetHeight > 0);
                 },
                 hide: () => {
                     const next = row.nextElementSibling;
+                    console.log('🔍 Hiding detail row:', next);
                     if (next && next.classList.contains('dtr-details')) {
                         next.remove();
+                        console.log('✅ Detail row removed');
                     }
                 }
             }
@@ -353,6 +467,7 @@ export class ResponsivePlugin {
             });
             
             const dd = createElement('dd');
+            
             if (typeof value === 'string' && value.includes('<')) {
                 dd.innerHTML = value;
             } else {

@@ -16,9 +16,6 @@ Modern, lightweight, vanilla JavaScript table library with **zero dependencies**
 ### Mobile Responsive
 ![ModernTable Mobile](./screenshots/mobile-responsive.png)
 
-### Export Functionality
-![Export Buttons](./screenshots/export-buttons.png)
-
 *More screenshots available in [SCREENSHOTS.md](./SCREENSHOTS.md)*
 
 ## ✨ Features
@@ -31,6 +28,7 @@ Modern, lightweight, vanilla JavaScript table library with **zero dependencies**
 - 🌙 **Dark Mode** - Built-in theme support
 - ⌨️ **Keyboard Navigation** - Full accessibility
 - 📊 **Server-side Processing** - Laravel/PHP ready
+- 🔍 **Individual Column Search** - Search each column independently
 - 🎯 **DataTables Compatible** - Easy migration
 
 ## 🚀 Quick Start
@@ -40,15 +38,15 @@ Modern, lightweight, vanilla JavaScript table library with **zero dependencies**
 <!-- Option 1: With Bootstrap + Font Awesome (Recommended) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.6/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.6/responsive.css" rel="stylesheet">
 
 <!-- Option 2: Standalone (Zero Dependencies) -->
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.6/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.6/responsive.css" rel="stylesheet">
 
 <!-- JavaScript -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/core/ModernTable.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.6/core/ModernTable.js"></script>
 ```
 
 ### NPM
@@ -67,11 +65,31 @@ const table = new ModernTable('#myTable', {
     columns: [
         { data: 'name', title: 'Name' },
         { data: 'email', title: 'Email' },
-        { data: 'status', title: 'Status' }
+        { data: 'status', title: 'Status' },
+        { data: 'action', title: 'Actions', searchable: false } // Skip search
     ],
     responsive: true,
     select: true,
+    columnSearch: true,                   // Enable individual column search
     buttons: ['copy', 'csv', 'excel']
+});
+```
+
+#### With Authentication Token
+```javascript
+const table = new ModernTable('#myTable', {
+    api: {
+        url: '/api/users',
+        headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+    },
+    columns: [
+        { data: 'name', title: 'Name' },
+        { data: 'email', title: 'Email' },
+        { data: 'status', title: 'Status' }
+    ]
 });
 ```
 
@@ -100,8 +118,31 @@ const table = new ModernTable('#myTable', {
 ### Core Options
 ```javascript
 const table = new ModernTable('#table', {
-    // Data source
+    // Data source (simple)
     api: '/api/data',
+    
+    // Data source (with auth and callbacks)
+    api: {
+        url: '/api/data',
+        method: 'GET',
+        timeout: 30000,
+        headers: {
+            'Authorization': 'Bearer YOUR_TOKEN',
+            'Content-Type': 'application/json'
+        },
+        beforeSend: function(params) {
+            // Show loading, modify params, etc.
+        },
+        success: function(data, status, response) {
+            // Handle successful response
+        },
+        error: function(error, status, message) {
+            // Handle errors
+        },
+        complete: function() {
+            // Always runs (cleanup, hide loading, etc.)
+        }
+    },
     
     // Columns configuration
     columns: [
@@ -118,6 +159,7 @@ const table = new ModernTable('#table', {
     paging: true,
     pageLength: 10,
     searching: true,
+    columnSearch: false,                  // Individual column search
     ordering: true,
     select: true,
     responsive: true,
@@ -131,6 +173,25 @@ const table = new ModernTable('#table', {
     keyboard: true,
     accessibility: true
 });
+```
+
+### Individual Column Search
+```javascript
+const table = new ModernTable('#table', {
+    columnSearch: true,                   // Enable individual column search
+    columns: [
+        { data: 'name', title: 'Name' },
+        { data: 'email', title: 'Email' },
+        { data: 'status', title: 'Status' },
+        { data: 'action', title: 'Actions', searchable: false } // Skip search
+    ]
+});
+
+// Clear all column searches
+table.clearColumnSearches();
+
+// Search specific column programmatically
+table.searchColumn(1, 'john'); // Search column 1 (name) for 'john'
 ```
 
 ### Advanced Filters
@@ -262,7 +323,7 @@ table.setData(newDataArray);
 
 ## 🌐 Server-side Integration
 
-### Laravel Example
+### Laravel Example with Column Search
 ```php
 // Controller
 public function users(Request $request)
@@ -275,12 +336,40 @@ public function users(Request $request)
     
     $query = User::query();
     
-    // Search
+    // Global search
     if (!empty($searchTerm)) {
         $query->where(function ($q) use ($searchTerm) {
             $q->where('name', 'like', '%' . $searchTerm . '%')
               ->orWhere('email', 'like', '%' . $searchTerm . '%');
         });
+    }
+    
+    // Individual column search
+    $columns = $request->input('columns', []);
+    if (!empty($columns) && is_array($columns)) {
+        foreach ($columns as $index => $column) {
+            $searchValue = null;
+            
+            if (isset($column['search']) && is_array($column['search'])) {
+                $searchValue = $column['search']['value'] ?? null;
+            }
+            
+            if (!empty($searchValue)) {
+                $columnData = $column['data'] ?? null;
+                
+                switch ($columnData) {
+                    case 'name':
+                        $query->where('name', 'like', '%' . $searchValue . '%');
+                        break;
+                    case 'email':
+                        $query->where('email', 'like', '%' . $searchValue . '%');
+                        break;
+                    case 'status':
+                        $query->where('status', 'like', '%' . $searchValue . '%');
+                        break;
+                }
+            }
+        }
     }
     
     // Sorting
@@ -307,6 +396,107 @@ public function users(Request $request)
         'data' => $users
     ]);
 }
+```
+
+### Laravel with Authentication
+```php
+// routes/api.php
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users', [UserController::class, 'index']);
+});
+
+// Controller with auth
+public function index(Request $request)
+{
+    // Ensure user is authenticated
+    $user = $request->user();
+    if (!$user) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+    
+    // Your existing DataTables logic...
+    $query = User::query();
+    
+    // Optional: Filter by user's organization/role
+    if (!$user->hasRole('admin')) {
+        $query->where('organization_id', $user->organization_id);
+    }
+    
+    // Rest of your DataTables implementation
+}
+```
+
+### Frontend with Token
+```javascript
+// Get token from Laravel Sanctum or Passport
+const token = document.querySelector('meta[name="api-token"]').content;
+
+const table = new ModernTable('#myTable', {
+    api: {
+        url: '/api/users',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        }
+    },
+    columns: [
+        { data: 'name', title: 'Name' },
+        { data: 'email', title: 'Email' },
+        { data: 'status', title: 'Status' }
+    ]
+});
+```
+
+### Complete API Configuration (jQuery.ajax-like)
+```javascript
+const table = new ModernTable('#myTable', {
+    api: {
+        url: '/api/users',
+        method: 'GET',
+        timeout: 30000, // 30 seconds
+        headers: {
+            'Authorization': 'Bearer ' + token
+        },
+        
+        // Before request is sent (like beforeSend)
+        beforeSend: function(params) {
+            console.log('Sending request with params:', params);
+            document.getElementById('loading').style.display = 'block';
+            // Return false to abort request
+        },
+        
+        // On successful response (like success)
+        success: function(data, textStatus, response) {
+            console.log('Request successful:', data);
+        },
+        
+        // On error (like error)
+        error: function(error, textStatus, errorThrown) {
+            console.error('Request failed:', error);
+            alert('Failed to load data');
+            // Return fallback data to prevent table error
+            return { data: [], recordsTotal: 0, recordsFiltered: 0 };
+        },
+        
+        // Always runs (like complete)
+        complete: function() {
+            document.getElementById('loading').style.display = 'none';
+            console.log('Request completed');
+        },
+        
+        // Legacy support
+        beforeRequest: function(config) {
+            // Modify request config
+            return config;
+        }
+    },
+    columns: [
+        { data: 'name', title: 'Name' },
+        { data: 'email', title: 'Email' },
+        { data: 'status', title: 'Status' }
+    ]
+});
 ```
 
 ## 📱 Responsive Design
@@ -354,6 +544,124 @@ table.page(2);
 
 // Column visibility
 table.column(0).visible(false);
+```
+
+### Callbacks (DataTables Compatible)
+```javascript
+const table = new ModernTable('#table', {
+    // Called after table initialization
+    initComplete: function(data, meta) {
+        console.log('Table initialized with:', data.length, 'rows');
+    },
+    
+    // Called BEFORE every table draw/redraw
+    preDrawCallback: function(settings) {
+        console.log('About to render:', settings.data.length, 'rows');
+        // Show loading, validate data, preprocessing
+        // Return false to cancel rendering
+        return true;
+    },
+    
+    // Called after every table draw/redraw
+    drawCallback: function(settings) {
+        console.log('Table drawn with:', settings.data.length, 'rows');
+        // Re-bind events, apply styling, initialize tooltips, etc.
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+    },
+    
+    // Called when row DOM element is created
+    createdRow: function(row, data, dataIndex) {
+        // Add data attributes, CSS classes, event listeners
+        row.setAttribute('data-user-id', data.id);
+        if (data.role === 'admin') {
+            row.classList.add('admin-row');
+        }
+    },
+    
+    // Called for each row during rendering
+    rowCallback: function(row, data, index) {
+        // Apply conditional styling, modify row content
+        if (data.status === 'inactive') {
+            row.classList.add('table-warning');
+        }
+    },
+    
+    // Called to manipulate header after each draw
+    headerCallback: function(thead, data, start, end, display) {
+        // Update header with dynamic info
+        const nameHeader = thead.querySelector('th[data-column="1"]');
+        if (nameHeader) {
+            const activeCount = data.filter(user => user.status === 'active').length;
+            nameHeader.title = `${activeCount} active users in current page`;
+        }
+    },
+    
+    // Called to manipulate footer after each draw
+    footerCallback: function(row, data, start, end, display) {
+        if (row) {
+            const total = data.length;
+            const active = data.filter(item => item.status === 'active').length;
+            row.innerHTML = `
+                <tr>
+                    <th colspan="3">Summary:</th>
+                    <th>Active: ${active}</th>
+                    <th>Total: ${total}</th>
+                    <th colspan="2"></th>
+                </tr>
+            `;
+        }
+    },
+    
+    // Called to generate custom info text
+    infoCallback: function(settings, start, end, max, total, pre) {
+        const percentage = total > 0 ? Math.round((total / max) * 100) : 0;
+        return `
+            <div class="d-flex justify-content-between">
+                <span>Menampilkan ${start} sampai ${end} dari ${total} data</span>
+                <span class="badge bg-info">${percentage}% data ditampilkan</span>
+            </div>
+        `;
+    },
+    
+    // Custom state loading (override built-in)
+    stateLoadCallback: function(settings) {
+        const state = JSON.parse(localStorage.getItem('customTableState'));
+        if (state) {
+            // Example: Always reset page to 1 (exclude paging from state)
+            state.page = 1;
+            return state;
+        }
+        return null;
+    },
+    
+    // Custom state saving (override built-in)
+    stateSaveCallback: function(settings, data) {
+        // Add custom metadata
+        const enhancedState = {
+            ...data,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
+        };
+        localStorage.setItem('customTableState', JSON.stringify(enhancedState));
+    },
+    
+    // Row click handler
+    onRowClick: function(rowData, index, event) {
+        console.log('Row clicked:', rowData);
+    },
+    
+    // Selection change handler
+    onSelectionChange: function(selectedRows) {
+        console.log('Selection changed:', selectedRows.length, 'rows');
+    },
+    
+    // Error handler
+    onError: function(error) {
+        console.error('Table error:', error);
+    }
+});
 ```
 
 ### Events

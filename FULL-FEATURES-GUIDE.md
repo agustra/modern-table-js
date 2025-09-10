@@ -10,10 +10,11 @@ Panduan lengkap penggunaan semua fitur ModernTable.js dengan contoh implementasi
 4. [Advanced Filters](#advanced-filters)
 5. [State Management](#state-management)
 6. [Export Features](#export-features)
-7. [Theme System](#theme-system)
-8. [Keyboard Navigation](#keyboard-navigation)
-9. [Responsive Design](#responsive-design)
-10. [Plugin System](#plugin-system)
+7. [Callbacks & Events](#callbacks--events)
+8. [Theme System](#theme-system)
+9. [Keyboard Navigation](#keyboard-navigation)
+10. [Responsive Design](#responsive-design)
+11. [Plugin System](#plugin-system)
 
 ---
 
@@ -122,13 +123,47 @@ const table = new ModernTable('#usersTable', {
         }
     ],
     
-    // 📞 Callbacks
-    onDataLoaded: (data, meta) => {
-        console.log('Data loaded:', data.length, 'records');
+    // 📞 Callbacks (DataTables Compatible)
+    initComplete: (data, meta) => {
+        console.log('Table initialized with:', data.length, 'records');
     },
+    
+    drawCallback: (settings) => {
+        console.log('Table drawn with:', settings.data.length, 'rows');
+        // Perfect for re-binding events after each render
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+        // Apply custom styling, initialize components, etc.
+    },
+    
+    footerCallback: (row, data, start, end, display) => {
+        // Manipulate footer with dynamic totals/summary
+        if (row) {
+            const totalUsers = data.length;
+            const activeUsers = data.filter(user => user.status === 'active').length;
+            const inactiveUsers = totalUsers - activeUsers;
+            
+            row.innerHTML = `
+                <tr>
+                    <th colspan="2">Summary:</th>
+                    <th class="text-center text-success">Active: ${activeUsers}</th>
+                    <th class="text-center text-danger">Inactive: ${inactiveUsers}</th>
+                    <th class="text-center"><strong>Total: ${totalUsers}</strong></th>
+                    <th colspan="2"></th>
+                </tr>
+            `;
+        }
+    },
+    
     onSelectionChange: (selectedRows) => {
         console.log('Selected:', selectedRows.length, 'rows');
     },
+    
+    onRowClick: (rowData, index, event) => {
+        console.log('Row clicked:', rowData);
+    },
+    
     onError: (error) => {
         console.error('Table error:', error);
     }
@@ -433,6 +468,359 @@ table.customPrint({
 
 ---
 
+## 📞 Callbacks & Events
+
+### Complete DataTables Compatible Callbacks
+
+ModernTable.js mendukung **semua callback DataTables** untuk kompatibilitas penuh dan migrasi mudah.
+
+```javascript
+const table = new ModernTable('#table', {
+    api: '/api/users',
+    columns: [...],
+    
+    // ✨ initComplete - Called after table initialization
+    initComplete: function(data, meta) {
+        console.log('Table initialized with:', data.length, 'records');
+        // Perfect for: Initial setup, one-time initialization
+    },
+    
+    // ⏳ preDrawCallback - Called BEFORE every table draw/redraw
+    preDrawCallback: function(settings) {
+        console.log('About to render:', settings.data.length, 'rows');
+        // Perfect for: Show loading, validate data, preprocessing
+        // Return false to cancel rendering
+        return true;
+    },
+    
+    // 🎨 drawCallback - Called after every table draw/redraw
+    drawCallback: function(settings) {
+        console.log('Table redrawn with:', settings.data.length, 'rows');
+        
+        // Perfect for: Re-binding events, reinitializing components
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+        
+        // Apply conditional styling after DOM is ready
+        setTimeout(() => {
+            settings.data.forEach((data, index) => {
+                const row = document.querySelector(`tbody tr[data-index="${index}"]`);
+                if (row && data.status === 'inactive') {
+                    row.style.backgroundColor = '#fff3cd';
+                    row.style.borderLeft = '4px solid #ffc107';
+                }
+            });
+        }, 10);
+    },
+    
+    // 🏭 createdRow - Called when row DOM element is created
+    createdRow: function(row, data, dataIndex) {
+        console.log('Row created:', dataIndex, data);
+        
+        // Perfect for: Add data attributes, CSS classes, event listeners
+        row.setAttribute('data-user-id', data.id);
+        row.setAttribute('data-user-role', data.role);
+        
+        // Add CSS classes based on data
+        if (data.role === 'admin') {
+            row.classList.add('admin-row');
+        }
+        
+        if (data.email_verified_at) {
+            row.classList.add('verified-user');
+        }
+        
+        // Add custom event listeners
+        row.addEventListener('dblclick', () => {
+            console.log('Double-clicked user:', data.name);
+            showUserDetails(data.id);
+        });
+    },
+    
+    // 🔄 rowCallback - Called for each row during rendering
+    rowCallback: function(row, data, index) {
+        // Perfect for: Row-specific styling, modify row content
+        if (data.status === 'inactive') {
+            row.classList.add('table-warning');
+        }
+        
+        // Add row-specific attributes
+        row.setAttribute('data-status', data.status);
+    },
+    
+    // 📋 headerCallback - Called to manipulate header after each draw
+    headerCallback: function(thead, data, start, end, display) {
+        // Perfect for: Dynamic header info, sorting indicators
+        const nameHeader = thead.querySelector('th[data-column="1"]');
+        if (nameHeader) {
+            const activeCount = data.filter(user => user.status === 'active').length;
+            nameHeader.title = `${activeCount} active users in current page`;
+        }
+    },
+    
+    // 👣 footerCallback - Called to manipulate footer after each draw
+    footerCallback: function(row, data, start, end, display) {
+        if (row) {
+            // Calculate real-time totals and summaries
+            const totalUsers = data.length;
+            const activeUsers = data.filter(user => user.status === 'active').length;
+            const inactiveUsers = totalUsers - activeUsers;
+            
+            // Calculate financial totals (if applicable)
+            const totalSalary = data.reduce((sum, item) => sum + (parseFloat(item.salary) || 0), 0);
+            const avgSalary = totalUsers > 0 ? (totalSalary / totalUsers).toFixed(2) : 0;
+            
+            row.innerHTML = `
+                <tr class="table-info">
+                    <th colspan="2">Page Summary (${start}-${end}):</th>
+                    <th class="text-center">
+                        <span class="badge bg-success">${activeUsers} Active</span>
+                    </th>
+                    <th class="text-center">
+                        <span class="badge bg-danger">${inactiveUsers} Inactive</span>
+                    </th>
+                    <th class="text-center">
+                        <strong>Total: ${totalUsers}</strong>
+                    </th>
+                    <th class="text-end">
+                        ${totalSalary > 0 ? `Avg: $${avgSalary}` : ''}
+                    </th>
+                    <th></th>
+                </tr>
+            `;
+        }
+    },
+    
+    // 📊 infoCallback - Called to generate custom info text
+    infoCallback: function(settings, start, end, max, total, pre) {
+        // Perfect for: Custom info format, additional statistics
+        const percentage = total > 0 ? Math.round((total / max) * 100) : 0;
+        
+        return `
+            <div class="d-flex justify-content-between align-items-center">
+                <span>
+                    📄 Menampilkan <strong>${start}</strong> sampai <strong>${end}</strong> 
+                    dari <strong>${total}</strong> data
+                    ${total < max ? ` (difilter dari <strong>${max}</strong> total)` : ''}
+                </span>
+                <span class="badge bg-info">
+                    📊 ${percentage}% data ditampilkan
+                </span>
+            </div>
+        `;
+    },
+    
+    // 💾 stateLoadCallback - Custom state loading
+    stateLoadCallback: function(settings) {
+        // Perfect for: Custom storage, server-side state, selective restore
+        const customKey = `modernTable_${window.location.pathname}_custom`;
+        const savedState = localStorage.getItem(customKey);
+        
+        if (savedState) {
+            const state = JSON.parse(savedState);
+            
+            // Example: Always reset page to 1 (exclude paging from state)
+            state.page = 1;
+            console.log('🚫 Paging excluded from state restore');
+            
+            // Show when state was saved
+            if (state.timestamp) {
+                const diffMinutes = Math.round((new Date() - new Date(state.timestamp)) / (1000 * 60));
+                console.log(`🕰️ State saved ${diffMinutes} minutes ago`);
+            }
+            
+            return state;
+        }
+        
+        return null;
+    },
+    
+    // 💾 stateSaveCallback - Custom state saving
+    stateSaveCallback: function(settings, data) {
+        // Perfect for: Enhanced metadata, server sync, selective save
+        
+        // Add custom metadata to state
+        const enhancedState = {
+            ...data,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            sessionId: Date.now()
+        };
+        
+        // Save to custom location
+        const customKey = `modernTable_${window.location.pathname}_custom`;
+        localStorage.setItem(customKey, JSON.stringify(enhancedState));
+        
+        // Optional: Save to server for cross-device sync
+        fetch('/api/save-table-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                table: 'users',
+                state: enhancedState,
+                user_id: getCurrentUserId()
+            })
+        });
+    },
+    
+    // 👆 onRowClick - Row click handler
+    onRowClick: function(rowData, index, event) {
+        console.log('Row clicked:', rowData);
+        showUserDetails(rowData.id);
+    },
+    
+    // ✅ onSelectionChange - Selection change handler
+    onSelectionChange: function(selectedRows) {
+        console.log('Selection changed:', selectedRows.length, 'rows');
+        
+        // Update bulk action buttons
+        const bulkActions = document.getElementById('bulk-actions');
+        if (selectedRows.length > 0) {
+            bulkActions.style.display = 'block';
+            bulkActions.querySelector('.count').textContent = selectedRows.length;
+        } else {
+            bulkActions.style.display = 'none';
+        }
+    },
+    
+    // ❌ onError - Error handler
+    onError: function(error) {
+        console.error('Table error:', error);
+        showNotification('Failed to load data. Please try again.', 'error');
+    }
+});
+```
+
+### When Callbacks Are Called
+
+| Callback | Trigger | Use Case |
+|----------|---------|----------|
+| `initComplete` | After initial data load | One-time setup, external component initialization |
+| `drawCallback` | After every table render | Re-bind events, update styling, reinit components |
+| `footerCallback` | After draw (if footer exists) | Dynamic totals, summaries, calculations |
+| `onRowClick` | User clicks table row | Show details, navigate, select |
+| `onSelectionChange` | Row selection changes | Update bulk actions, show/hide buttons |
+| `onError` | API or processing error | Show notifications, fallback handling |
+
+### Advanced Callback Examples
+
+#### 1. Dynamic Footer with Real-time Calculations
+```javascript
+footerCallback: function(row, data, start, end, display) {
+    if (row && data.length > 0) {
+        // Financial calculations
+        const totals = data.reduce((acc, item) => {
+            acc.revenue += parseFloat(item.revenue) || 0;
+            acc.expenses += parseFloat(item.expenses) || 0;
+            acc.profit += parseFloat(item.profit) || 0;
+            return acc;
+        }, { revenue: 0, expenses: 0, profit: 0 });
+        
+        const profitMargin = totals.revenue > 0 ? 
+            ((totals.profit / totals.revenue) * 100).toFixed(1) : 0;
+        
+        row.innerHTML = `
+            <tr class="table-dark">
+                <th colspan="3">Page Totals:</th>
+                <th class="text-end text-success">$${totals.revenue.toLocaleString()}</th>
+                <th class="text-end text-danger">$${totals.expenses.toLocaleString()}</th>
+                <th class="text-end text-info">$${totals.profit.toLocaleString()}</th>
+                <th class="text-center">${profitMargin}%</th>
+            </tr>
+        `;
+    }
+}
+```
+
+#### 2. Advanced drawCallback for Dynamic Features
+```javascript
+drawCallback: function(settings) {
+    // 1. Reinitialize tooltips
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+        new bootstrap.Tooltip(el);
+    });
+    
+    // 2. Apply conditional row styling
+    settings.data.forEach((row, index) => {
+        const tr = document.querySelector(`tr[data-index="${index}"]`);
+        if (tr) {
+            // Highlight overdue items
+            if (new Date(row.due_date) < new Date()) {
+                tr.classList.add('table-danger');
+            }
+            
+            // Add priority indicators
+            if (row.priority === 'high') {
+                tr.classList.add('border-start', 'border-danger', 'border-3');
+            }
+        }
+    });
+    
+    // 3. Update external components
+    updateDashboardStats(settings);
+    
+    // 4. Initialize custom components
+    initializeCustomComponents();
+}
+```
+
+#### 3. Smart Selection Management
+```javascript
+onSelectionChange: function(selectedRows) {
+    const count = selectedRows.length;
+    
+    // Update UI elements
+    document.querySelectorAll('.selection-count').forEach(el => {
+        el.textContent = count;
+    });
+    
+    // Show/hide bulk action buttons
+    const bulkActions = document.getElementById('bulk-actions');
+    bulkActions.style.display = count > 0 ? 'flex' : 'none';
+    
+    // Enable/disable specific actions based on selection
+    const deleteBtn = document.getElementById('bulk-delete');
+    const exportBtn = document.getElementById('bulk-export');
+    
+    deleteBtn.disabled = count === 0;
+    exportBtn.disabled = count === 0;
+    
+    // Update action button text
+    if (count > 0) {
+        deleteBtn.innerHTML = `<i class="fas fa-trash"></i> Delete ${count} items`;
+        exportBtn.innerHTML = `<i class="fas fa-download"></i> Export ${count} items`;
+    }
+    
+    // Calculate selection totals
+    if (count > 0) {
+        const total = selectedRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+        document.getElementById('selection-total').textContent = `$${total.toLocaleString()}`;
+    }
+}
+```
+
+### Event System
+
+Selain callbacks, ModernTable.js juga mendukung event system:
+
+```javascript
+// Listen to events
+table.on('dataLoaded', function(data, meta) {
+    console.log('Data loaded event:', data.length, 'records');
+});
+
+table.on('selectionChange', function(selectedRows) {
+    console.log('Selection change event:', selectedRows);
+});
+
+// Emit custom events
+table.emit('customEvent', { message: 'Hello World' });
+```
+
+---
+
 ## 🎨 Theme System
 
 ### Theme Configuration
@@ -630,7 +1018,7 @@ const table = new ModernTable('#usersTable', {
         }
     ],
     
-    onDataLoaded: (data, meta) => {
+    initComplete: (data, meta) => {
         console.log(`Loaded ${data.length} records`);
     }
 });

@@ -27,30 +27,75 @@ export class ApiClient {
     }
 
     /**
-     * Make HTTP request
+     * Make HTTP request with jQuery.ajax-like callbacks
      */
     async request(params = {}) {
+        let config;
+        
         try {
-            const config = await this.prepareRequest(params);
+            // beforeSend callback
+            if (this.config.beforeSend) {
+                const shouldContinue = await this.config.beforeSend(params);
+                if (shouldContinue === false) {
+                    return; // Abort request
+                }
+            }
+            
+            config = await this.prepareRequest(params);
+            
+            // Setup timeout if specified
+            const controller = new AbortController();
+            let timeoutId;
+            
+            if (this.config.timeout) {
+                timeoutId = setTimeout(() => {
+                    controller.abort();
+                }, this.config.timeout);
+            }
             
             const response = await fetch(config.url, {
                 method: config.method,
                 headers: config.headers,
-                body: config.method !== 'GET' ? JSON.stringify(config.data) : null
+                body: config.method !== 'GET' ? JSON.stringify(config.data) : null,
+                signal: controller.signal
             });
+            
+            // Clear timeout
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
+            
+            // success callback
+            if (this.config.success) {
+                await this.config.success(data, 'success', response);
+            }
+            
             return data;
 
         } catch (error) {
+            // error callback
+            if (this.config.error) {
+                const result = await this.config.error(error, 'error', error.message);
+                if (result) return result; // Allow error callback to provide fallback data
+            }
+            
+            // Legacy onError support
             if (this.config.onError) {
                 return await this.config.onError(error);
             }
+            
             throw error;
+        } finally {
+            // complete callback (always runs)
+            if (this.config.complete) {
+                await this.config.complete();
+            }
         }
     }
 
@@ -95,17 +140,30 @@ export class ApiClient {
                 if (value !== null && value !== undefined) {
                     if (Array.isArray(value)) {
                         value.forEach((item, index) => {
-                            if (typeof item === 'object') {
+                            if (typeof item === 'object' && item !== null) {
                                 Object.entries(item).forEach(([subKey, subValue]) => {
-                                    url.searchParams.append(`${key}[${index}][${subKey}]`, subValue);
+                                    if (typeof subValue === 'object' && subValue !== null) {
+                                        // Handle nested objects (like search: {value: 'x', regex: false})
+                                        Object.entries(subValue).forEach(([nestedKey, nestedValue]) => {
+                                            url.searchParams.append(`${key}[${index}][${subKey}][${nestedKey}]`, nestedValue);
+                                        });
+                                    } else {
+                                        url.searchParams.append(`${key}[${index}][${subKey}]`, subValue);
+                                    }
                                 });
                             } else {
                                 url.searchParams.append(`${key}[${index}]`, item);
                             }
                         });
-                    } else if (typeof value === 'object') {
+                    } else if (typeof value === 'object' && value !== null) {
                         Object.entries(value).forEach(([subKey, subValue]) => {
-                            url.searchParams.append(`${key}[${subKey}]`, subValue);
+                            if (typeof subValue === 'object' && subValue !== null) {
+                                Object.entries(subValue).forEach(([nestedKey, nestedValue]) => {
+                                    url.searchParams.append(`${key}[${subKey}][${nestedKey}]`, nestedValue);
+                                });
+                            } else {
+                                url.searchParams.append(`${key}[${subKey}]`, subValue);
+                            }
                         });
                     } else {
                         url.searchParams.append(key, value);

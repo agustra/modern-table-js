@@ -17,6 +17,7 @@ import { ResponsivePlugin } from '../plugins/ResponsivePlugin.js';
 import { ThemePlugin } from '../plugins/ThemePlugin.js';
 import { KeyboardPlugin } from '../plugins/KeyboardPlugin.js';
 import { AccessibilityPlugin } from '../plugins/AccessibilityPlugin.js';
+import { FixedColumnsPlugin } from '../plugins/FixedColumnsPlugin.js';
 
 export class ModernTable extends EventEmitter {
     constructor(selector, options = {}) {
@@ -55,6 +56,7 @@ export class ModernTable extends EventEmitter {
         this.isClientSide = !!this.options.data;       // Client-side mode flag
         this.framework = detectFramework();
         this.classes = getFrameworkClasses(this.framework);
+        this.columnSearches = {};                       // Individual column searches
         
         // Initialize core components
         this.apiClient = new ApiClient(this.options.api);
@@ -96,6 +98,7 @@ export class ModernTable extends EventEmitter {
         // Search & Filter
         searching: true,
         searchDelay: 200, // Reduced for better responsiveness
+        columnSearch: false, // Individual column search
         
         // Sorting
         ordering: true,
@@ -107,6 +110,9 @@ export class ModernTable extends EventEmitter {
         
         // Responsive
         responsive: false,
+        
+        // Fixed Columns
+        fixedColumns: false,
         
         // Theme
         theme: 'auto', // 'light', 'dark', 'auto'
@@ -145,8 +151,17 @@ export class ModernTable extends EventEmitter {
             noData: 'No data available'
         },
         
-        // Callbacks
-        onDataLoaded: null,
+        // Callbacks (DataTables compatible)
+        initComplete: null,
+        preDrawCallback: null,
+        drawCallback: null,
+        rowCallback: null,
+        createdRow: null,
+        footerCallback: null,
+        headerCallback: null,
+        infoCallback: null,
+        stateLoadCallback: null,
+        stateSaveCallback: null,
         onError: null,
         onRowClick: null,
         onSelectionChange: null
@@ -596,6 +611,116 @@ export class ModernTable extends EventEmitter {
         // Clear existing header and add new one
         this.thead.innerHTML = '';
         this.thead.appendChild(headerRow);
+        
+        // Add column search row if enabled
+        if (this.options.columnSearch) {
+            this.createColumnSearchRow();
+        }
+    }
+    
+    /**
+     * Create column search row
+     */
+    createColumnSearchRow() {
+        const searchRow = createElement('tr', {
+            className: 'column-search-row'
+        });
+        
+        // Selection column
+        if (this.options.select) {
+            const th = createElement('th', {
+                className: 'text-center',
+                style: 'padding: 8px;'
+            });
+            searchRow.appendChild(th);
+        }
+        
+        // Data columns
+        this.options.columns.forEach((column, index) => {
+            const th = createElement('th', {
+                style: 'padding: 4px 8px;'
+            });
+            
+            // Skip search for non-searchable columns
+            if (column.searchable === false || column.data === 'DT_RowIndex' || column.data === 'action') {
+                searchRow.appendChild(th);
+                return;
+            }
+            
+            // Create search input
+            const searchInput = createElement('input', {
+                type: 'text',
+                className: 'form-control form-control-sm column-search-input',
+                placeholder: `Search ${column.title || column.data}...`,
+                'data-column': index,
+                style: 'width: 100%; min-width: 80px;'
+            });
+            
+            // Add event listener with debounce
+            searchInput.addEventListener('input', debounce((e) => {
+                this.searchColumn(index, e.target.value);
+            }, this.options.searchDelay));
+            
+            th.appendChild(searchInput);
+            searchRow.appendChild(th);
+        });
+        
+        this.thead.appendChild(searchRow);
+    }
+    
+    /**
+     * Search specific column
+     */
+    searchColumn(columnIndex, searchTerm) {
+        // Initialize column searches if not exists
+        if (!this.columnSearches) {
+            this.columnSearches = {};
+        }
+        
+        // Update column search value
+        this.columnSearches[columnIndex] = searchTerm;
+        
+        // Reset to first page
+        this.currentPage = 1;
+        
+        // Save state
+        if (this.stateManager && this.stateManager.isEnabled()) {
+            this.stateManager.save();
+        }
+        
+        // Reload data
+        if (this.isClientSide) {
+            this.processClientSideData();
+        } else {
+            this.loadData();
+        }
+    }
+    
+    /**
+     * Get column search value
+     */
+    getColumnSearchValue(columnIndex) {
+        return this.columnSearches ? this.columnSearches[columnIndex] : '';
+    }
+    
+    /**
+     * Clear all column searches
+     */
+    clearColumnSearches() {
+        this.columnSearches = {};
+        
+        // Clear input values
+        const searchInputs = findAll('.column-search-input', this.thead);
+        searchInputs.forEach(input => {
+            input.value = '';
+        });
+        
+        // Reload data
+        if (this.isClientSide) {
+            this.processClientSideData();
+        } else {
+            this.loadData();
+        }
     }
 
     /**
@@ -703,6 +828,13 @@ export class ModernTable extends EventEmitter {
                 console.warn('AccessibilityPlugin failed:', error);
             }
         }
+        if (this.options.fixedColumns) {
+            try {
+                this.plugins.fixedColumns = new FixedColumnsPlugin(this);
+            } catch (error) {
+                console.warn('FixedColumnsPlugin failed:', error);
+            }
+        }
     }
 
     /**
@@ -746,6 +878,20 @@ export class ModernTable extends EventEmitter {
                 });
             }
         }
+        
+        // Row click event
+        if (this.options.onRowClick) {
+            this.tbody.addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                if (row && row.dataset.index !== undefined) {
+                    const rowIndex = parseInt(row.dataset.index);
+                    const rowData = this.data[rowIndex];
+                    if (rowData) {
+                        this.options.onRowClick(rowData, rowIndex, e);
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -784,12 +930,30 @@ export class ModernTable extends EventEmitter {
                     current_page: this.currentPage,
                     last_page: this.totalPages
                 });
-            if (this.options.onDataLoaded) {
-                this.options.onDataLoaded(this.data, {
+            if (this.options.initComplete) {
+                this.options.initComplete(this.data, {
                     total: this.totalRecords,
                     filtered: this.filteredRecords,
                     current_page: this.currentPage,
                     last_page: this.totalPages
+                });
+            }
+            
+            // Call preDrawCallback before rendering
+            if (this.options.preDrawCallback) {
+                this.options.preDrawCallback({
+                    data: this.data,
+                    recordsTotal: this.totalRecords,
+                    recordsFiltered: this.filteredRecords
+                });
+            }
+            
+            // Call drawCallback after table is drawn
+            if (this.options.drawCallback) {
+                this.options.drawCallback({
+                    data: this.data,
+                    recordsTotal: this.totalRecords,
+                    recordsFiltered: this.filteredRecords
                 });
             }
             
@@ -829,16 +993,20 @@ export class ModernTable extends EventEmitter {
         };
         
         // Add columns info (DataTables format - exact same as DataTables)
-        params.columns = this.options.columns.map((col, index) => ({
-            data: col.data,
-            name: col.name || col.data,
-            searchable: col.searchable !== false,
-            orderable: col.orderable !== false,
-            search: {
-                value: '',
-                regex: false
-            }
-        }));
+        params.columns = this.options.columns.map((col, index) => {
+            const columnSearchValue = this.getColumnSearchValue(index) || '';
+            
+            return {
+                data: col.data,
+                name: col.name || col.data,
+                searchable: col.searchable !== false,
+                orderable: col.orderable !== false,
+                search: {
+                    value: columnSearchValue,
+                    regex: false
+                }
+            };
+        });
         
         // Add search (DataTables format - exact same as DataTables)
         const searchTerm = this.searchInput?.value?.trim() || this.stateManager?.pendingSearch || '';
@@ -915,6 +1083,19 @@ export class ModernTable extends EventEmitter {
      * Render table data - OPTIMIZED with DocumentFragment
      */
     renderData() {
+        // Call preDrawCallback before rendering
+        if (this.options.preDrawCallback) {
+            const result = this.options.preDrawCallback({
+                data: this.data,
+                recordsTotal: this.totalRecords,
+                recordsFiltered: this.filteredRecords
+            });
+            // If preDrawCallback returns false, cancel rendering
+            if (result === false) {
+                return;
+            }
+        }
+        
         if (!this.data || this.data.length === 0) {
             this.showNoData();
             return;
@@ -939,6 +1120,44 @@ export class ModernTable extends EventEmitter {
         // Setup responsive layout
         if (this.plugins.responsive) {
             this.plugins.responsive.updateAfterDataLoad();
+        }
+        
+        // Call rowCallback for each row
+        if (this.options.rowCallback) {
+            const rows = this.tbody.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (this.data[index]) {
+                    this.options.rowCallback(row, this.data[index], index);
+                }
+            });
+        }
+        
+        // Call headerCallback if header exists
+        if (this.options.headerCallback && this.thead) {
+            this.options.headerCallback(this.thead, this.data,
+                (this.currentPage - 1) * this.options.pageLength,
+                Math.min(this.currentPage * this.options.pageLength, this.filteredRecords),
+                this.data.map((_, index) => index)
+            );
+        }
+        
+        // Call drawCallback after rendering
+        if (this.options.drawCallback) {
+            this.options.drawCallback({
+                data: this.data,
+                recordsTotal: this.totalRecords,
+                recordsFiltered: this.filteredRecords
+            });
+        }
+        
+        // Call footerCallback if footer exists
+        if (this.options.footerCallback && this.element.querySelector('tfoot')) {
+            const tfoot = this.element.querySelector('tfoot');
+            this.options.footerCallback(tfoot, this.data, 
+                (this.currentPage - 1) * this.options.pageLength,
+                Math.min(this.currentPage * this.options.pageLength, this.filteredRecords),
+                this.data.map((_, index) => index)
+            );
         }
     }
 
@@ -985,6 +1204,11 @@ export class ModernTable extends EventEmitter {
         const row = document.createElement('tr');
         row.setAttribute('data-index', index);
         row.innerHTML = rowHTML;
+        
+        // Call createdRow callback when row DOM element is created
+        if (this.options.createdRow) {
+            this.options.createdRow(row, rowData, index);
+        }
         
         return row;
     }
@@ -1322,17 +1546,32 @@ export class ModernTable extends EventEmitter {
         const start = ((this.currentPage - 1) * this.options.pageLength) + 1;
         const end = Math.min(this.currentPage * this.options.pageLength, this.filteredRecords);
         
-        let infoText = this.options.language.info
-            .replace('_START_', start)
-            .replace('_END_', end)
-            .replace('_TOTAL_', this.filteredRecords);
+        let infoText;
         
-        if (this.filteredRecords < this.totalRecords) {
-            infoText += ' ' + this.options.language.infoFiltered
-                .replace('_MAX_', this.totalRecords);
+        // Use infoCallback if provided
+        if (this.options.infoCallback) {
+            infoText = this.options.infoCallback({
+                recordsTotal: this.totalRecords,
+                recordsFiltered: this.filteredRecords,
+                start: start,
+                end: end,
+                page: this.currentPage,
+                pages: this.totalPages
+            }, start, end, this.totalRecords, this.filteredRecords, '');
+        } else {
+            // Default info text
+            infoText = this.options.language.info
+                .replace('_START_', start)
+                .replace('_END_', end)
+                .replace('_TOTAL_', this.filteredRecords);
+            
+            if (this.filteredRecords < this.totalRecords) {
+                infoText += ' ' + this.options.language.infoFiltered
+                    .replace('_MAX_', this.totalRecords);
+            }
         }
         
-        this.infoElement.textContent = infoText;
+        this.infoElement.innerHTML = infoText;
     }
 
     /**
@@ -1728,7 +1967,20 @@ export class ModernTable extends EventEmitter {
     loadSavedState() {
         if (!this.options.stateSave) return;
         
-        const state = this.stateManager.load();
+        let state;
+        
+        // Use stateLoadCallback if provided
+        if (this.options.stateLoadCallback) {
+            state = this.options.stateLoadCallback({
+                table: this,
+                stateSave: this.options.stateSave,
+                stateDuration: this.options.stateDuration
+            });
+        } else {
+            // Default state loading
+            state = this.stateManager.load();
+        }
+        
         if (state) {
             this.stateManager.applySync(state);
         }
@@ -1738,7 +1990,18 @@ export class ModernTable extends EventEmitter {
      * Save current state
      */
     saveState() {
-        this.stateManager.save();
+        // Use stateSaveCallback if provided
+        if (this.options.stateSaveCallback) {
+            const stateData = this.stateManager.getState();
+            this.options.stateSaveCallback({
+                table: this,
+                stateSave: this.options.stateSave,
+                stateDuration: this.options.stateDuration
+            }, stateData);
+        } else {
+            // Default state saving
+            this.stateManager.save();
+        }
     }
 
     /**
@@ -2121,7 +2384,7 @@ export class ModernTable extends EventEmitter {
     processClientSideData() {
         let processedData = [...this.originalData];
         
-        // Apply search filter
+        // Apply global search filter
         const searchTerm = this.searchInput?.value?.trim() || '';
         if (searchTerm) {
             processedData = processedData.filter(row => {
@@ -2129,6 +2392,22 @@ export class ModernTable extends EventEmitter {
                     const cellValue = this.getCellValue(row, column.data);
                     return String(cellValue).toLowerCase().includes(searchTerm.toLowerCase());
                 });
+            });
+        }
+        
+        // Apply column-specific search filters
+        if (this.columnSearches) {
+            Object.keys(this.columnSearches).forEach(columnIndex => {
+                const searchValue = this.columnSearches[columnIndex];
+                if (searchValue && searchValue.trim()) {
+                    const column = this.options.columns[columnIndex];
+                    if (column) {
+                        processedData = processedData.filter(row => {
+                            const cellValue = this.getCellValue(row, column.data);
+                            return String(cellValue).toLowerCase().includes(searchValue.toLowerCase());
+                        });
+                    }
+                }
             });
         }
         
@@ -2173,12 +2452,30 @@ export class ModernTable extends EventEmitter {
             last_page: this.totalPages
         });
         
-        if (this.options.onDataLoaded) {
-            this.options.onDataLoaded(this.data, {
+        if (this.options.initComplete) {
+            this.options.initComplete(this.data, {
                 total: this.totalRecords,
                 filtered: this.filteredRecords,
                 current_page: this.currentPage,
                 last_page: this.totalPages
+            });
+        }
+        
+        // Call preDrawCallback before rendering
+        if (this.options.preDrawCallback) {
+            this.options.preDrawCallback({
+                data: this.data,
+                recordsTotal: this.totalRecords,
+                recordsFiltered: this.filteredRecords
+            });
+        }
+        
+        // Call drawCallback after table is drawn
+        if (this.options.drawCallback) {
+            this.options.drawCallback({
+                data: this.data,
+                recordsTotal: this.totalRecords,
+                recordsFiltered: this.filteredRecords
             });
         }
     }
