@@ -21,7 +21,7 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "lint": "eslint core/ components/ plugins/ utils/",
     "docs": "jsdoc -c jsdoc.conf.json",
     "prepublishOnly": "npm run build && npm run test"
@@ -61,10 +61,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/modern-table/modern-table-js.git"
+    "url": "https://github.com/agustra/modern-table-js.git"
   },
   "bugs": {
-    "url": "https://github.com/modern-table/modern-table-js/issues"
+    "url": "https://github.com/agustra/modern-table-js/issues"
   },
   "homepage": "https://modern-table.js.org",
   "engines": {
