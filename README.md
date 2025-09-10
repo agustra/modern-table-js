@@ -40,15 +40,15 @@ Modern, lightweight, vanilla JavaScript table library with **zero dependencies**
 <!-- Option 1: With Bootstrap + Font Awesome (Recommended) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/responsive.css" rel="stylesheet">
 
 <!-- Option 2: Standalone (Zero Dependencies) -->
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/responsive.css" rel="stylesheet">
 
 <!-- JavaScript -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.3/core/ModernTable.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.5/core/ModernTable.js"></script>
 ```
 
 ### NPM

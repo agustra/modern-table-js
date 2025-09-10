@@ -1,6 +1,6 @@
 {
   "name": "modern-table-js",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Modern, lightweight, vanilla JavaScript table library with zero dependencies. 67% faster than DataTables with mobile-first responsive design.",
   "main": "dist/modern-table.min.js",
   "module": "core/ModernTable.js",
@@ -11,11 +11,17 @@
     "components/",
     "plugins/",
     "utils/",
-    "css/",
     "types/",
+    "modern-table.css",
+    "responsive.css",
+    "themes.css",
     "README.md",
     "QUICK-START.md",
     "FULL-FEATURES-GUIDE.md",
+    "EXPORT-BUTTONS-GUIDE.md",
+    "EXPORT-QUICK-REFERENCE.md",
+    "CSS-ICONS-GUIDE.md",
+    "SCREENSHOTS.md",
     "LICENSE"
   ],
   "scripts": {
