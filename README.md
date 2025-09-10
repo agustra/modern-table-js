@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/modern-table-js)](https://bundlephobia.com/package/modern-table-js)
 [![Downloads](https://img.shields.io/npm/dm/modern-table-js.svg)](https://www.npmjs.com/package/modern-table-js)
-[![GitHub Stars](https://img.shields.io/github/stars/modern-table/modern-table-js.svg)](https://github.com/modern-table/modern-table-js)
+[![GitHub Stars](https://img.shields.io/github/stars/agustra/modern-table-js.svg)](https://github.com/agustra/modern-table-js)
 
 Modern, lightweight, vanilla JavaScript table library with **zero dependencies**. DataTables-compatible API with mobile-first responsive design.
 
@@ -371,7 +371,7 @@ table.on('selectionChange', function(selectedRows) {
 
 ```bash
 # Clone repository
-git clone https://github.com/modern-table/modern-table-js.git
+git clone https://github.com/agustra/modern-table-js.git
 
 # Install dependencies
 npm install
@@ -389,7 +389,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md).
+Contributions are welcome! Please open an issue or submit a pull request.
 
 ## 📚 Documentation
 
@@ -399,14 +399,14 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 - 📋 **[Export Quick Reference](./EXPORT-QUICK-REFERENCE.md)** - Quick reference card
 - 🎨 **[CSS & Icons Guide](./CSS-ICONS-GUIDE.md)** - Styling & framework integration
 - 📸 **[Screenshots](./SCREENSHOTS.md)** - Visual gallery
-- 🌐 **[Live Examples](https://modern-table.js.org/examples)** - Interactive demos
+- 🌐 **[Live Examples](https://github.com/agustra/modern-table-js/tree/main/examples)** - Interactive demos
 
 ## 📞 Support
 
-- 📖 [Documentation](https://modern-table.js.org)
-- 🐛 [Issues](https://github.com/modern-table/modern-table-js/issues)
-- 💬 [Discussions](https://github.com/modern-table/modern-table-js/discussions)
-- 📧 [Email Support](mailto:support@modern-table.js.org)
+- 📖 [Documentation](https://github.com/agustra/modern-table-js#readme)
+- 🐛 [Issues](https://github.com/agustra/modern-table-js/issues)
+- 💬 [Discussions](https://github.com/agustra/modern-table-js/discussions)
+- 📧 [Email Support](mailto:agusta.usk@gmail.com)
 
 ---
 
