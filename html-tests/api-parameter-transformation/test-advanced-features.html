@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Advanced Features</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/modern-table.css" rel="stylesheet">
+  <link href="/responsive.css" rel="stylesheet">
+  <link href="/themes.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container mt-4">
+    <h2>🚀 Test: Advanced Features</h2>
+    <p class="text-muted">Testing advanced parameter transformation with sorting, search, and data preprocessing</p>
+    
+    <div class="card">
+      <div class="card-header">
+        <h5>Users Table (Advanced Features)</h5>
+      </div>
+      <div class="card-body">
+        <table id="advanced-table" class="table table-striped"></table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ModernTable } from "/core/ModernTable.js";
+
+    const table = new ModernTable("#advanced-table", {
+      api: {
+        url: "https://dummyjson.com/users",
+        method: "GET",
+        
+        beforeRequest: async (config) => {
+          console.group("🔄 Parameter Transformation");
+          console.log("📤 Original params:", config.data);
+          
+          const params = config.data || {};
+          const query = new URLSearchParams();
+          
+          // Basic pagination
+          query.append("limit", params.length || 10);
+          query.append("skip", params.start || 0);
+          
+          // Global search
+          if (params.search?.value) {
+            query.append("q", params.search.value);
+          }
+          
+          // Sorting (DummyJSON supports sortBy and order)
+          if (params.order?.length > 0) {
+            const order = params.order[0];
+            const column = params.columns[order.column];
+            query.append("sortBy", column.data);
+            query.append("order", order.dir);
+          }
+          
+          config.url = `https://dummyjson.com/users?${query.toString()}`;
+          console.log("🌐 Final URL:", config.url);
+          console.groupEnd();
+          
+          return config;
+        },
+        
+        dataSrc: function(json) {
+          console.group("📥 Response Transformation");
+          console.log("📊 Raw response:", json);
+          
+          // Preprocess data before rendering
+          const processedData = json.users.map(user => ({
+            ...user,
+            fullName: `${user.firstName} ${user.lastName}`,
+            avatar: user.image || '/default-avatar.png',
+            status: user.age >= 18 ? 'Adult' : 'Minor',
+            ageGroup: user.age < 25 ? 'Young' : user.age < 50 ? 'Middle' : 'Senior'
+          }));
+          
+          const result = {
+            draw: json.draw || 1,
+            recordsTotal: json.total,
+            recordsFiltered: json.total,
+            data: processedData
+          };
+          
+          console.log("✅ Transformed result:", result);
+          console.groupEnd();
+          
+          return result;
+        }
+      },
+      columns: [
+        { data: "id", title: "ID", width: "60px" },
+        { data: "fullName", title: "Full Name" },
+        { data: "email", title: "Email" },
+        { data: "age", title: "Age", width: "80px" },
+        { data: "ageGroup", title: "Age Group", width: "100px" },
+        { data: "status", title: "Status", width: "80px" },
+        { 
+          data: "avatar", 
+          title: "Avatar", 
+          width: "80px",
+          render: function(data, type, row) {
+            return `<img src="${data}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%;">`;
+          }
+        }
+      ],
+      serverSide: true,
+      pageLength: 10,
+      paging: true,
+      searching: true,
+      ordering: true,
+      responsive: true
+    });
+  </script>
+</body>
+</html>

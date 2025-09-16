@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern Table</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <!-- ModernTable.js CSS (Local) -->
+    <link href="/modern-table.css" rel="stylesheet" />
+    <link href="/responsive.css" rel="stylesheet" />
+    <link href="/themes.css" rel="stylesheet" />
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <style>
+      /* Debug styling */
+      .column-search-input {
+        border: 2px solid red !important;
+      }
+
+      th {
+        border: 2px solid blue !important;
+      }
+    </style>
+  </head>
+
+  <body data-bs-theme="light">
+    <div class="container mt-5">
+      <div
+        class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3"
+      >
+        <h1 class="mb-0">Modern Table Server-Side Test</h1>
+        <div class="btn-group btn-group-sm" role="group">
+          <input
+            type="radio"
+            class="btn-check"
+            name="theme"
+            id="light"
+            value="light"
+            checked
+          />
+          <label class="btn btn-outline-secondary" for="light">
+            <i class="fas fa-sun d-md-none"></i>
+            <span class="d-none d-md-inline"
+              ><i class="fas fa-sun"></i> Light</span
+            >
+          </label>
+
+          <input
+            type="radio"
+            class="btn-check"
+            name="theme"
+            id="dark"
+            value="dark"
+          />
+          <label class="btn btn-outline-secondary" for="dark">
+            <i class="fas fa-moon d-md-none"></i>
+            <span class="d-none d-md-inline"
+              ><i class="fas fa-moon"></i> Dark</span
+            >
+          </label>
+
+          <input
+            type="radio"
+            class="btn-check"
+            name="theme"
+            id="auto"
+            value="auto"
+          />
+          <label class="btn btn-outline-secondary" for="auto">
+            <i class="fas fa-adjust d-md-none"></i>
+            <span class="d-none d-md-inline"
+              ><i class="fas fa-adjust"></i> Auto</span
+            >
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h5>Users Table</h5>
+        </div>
+        <div class="card-body">
+          <table id="table-users" class="table table-striped">
+            <tfoot>
+              <tr>
+                <th colspan="7" class="text-center text-muted">
+                  Footer will be updated by footerCallback
+                </th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ModernTable.js Library -->
+    <script type="module">
+      import { ModernTable } from "/core/ModernTable.js";
+
+      const table = new ModernTable("#table-users", {
+        // api: {
+        //   url: "https://dummyjson.com/users",
+        //   method: "GET",
+        //   beforeRequest: async (config) => {
+        //     const params = config.data || {};
+
+        //     // Use different endpoint for search vs pagination
+        //     if (params.search?.value) {
+        //       // Search endpoint
+        //       const query = new URLSearchParams({
+        //         q: params.search.value,
+        //         limit: params.length || 10,
+        //         skip: params.start || 0
+        //       });
+        //       config.url = `https://dummyjson.com/users/search?${query}`;
+        //     } else {
+        //       // Regular pagination endpoint
+        //       const query = new URLSearchParams({
+        //         limit: params.length || 10,
+        //         skip: params.start || 0
+        //       });
+        //       config.url = `https://dummyjson.com/users?${query}`;
+        //     }
+
+        //     console.log("🔍 Request URL:", config.url);
+        //     return config;
+        //   },
+        //   dataSrc: function (json, requestParams) {
+        //     return {
+        //       draw: json.draw || 1,
+        //       recordsTotal: json.total,
+        //       recordsFiltered: json.total,
+        //       data: json.users,
+        //     };
+        //   },
+        // },
+        api: {
+          url: "/api/users",
+          headers: {
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+              .content,
+          },
+        },
+        columns: [
+          { data: "id", title: "ID", width: "60px" },
+          { data: "firstName", title: "First Name" },
+          { data: "lastName", title: "Last Name" },
+          { data: "email", title: "Email" },
+          { data: "phone", title: "Phone" },
+        ],
+        serverSide: true,
+        pageLength: 10,
+        paging: true,
+        searching: true,
+        ordering: true,
+        responsive: true,
+      });
+    </script>
+  </body>
+</html>

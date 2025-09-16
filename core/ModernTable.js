@@ -53,7 +53,10 @@ export class ModernTable extends EventEmitter {
         this.currentPage = 1;
         this.totalRecords = this.data.length;
         this.isLoading = false;
-        this.isClientSide = !!this.options.data;       // Client-side mode flag
+        
+        // Determine processing mode (like DataTables)
+        // Default to client-side unless explicitly serverSide: true
+        this.isClientSide = this.options.data ? true : !this.options.serverSide;
         this.framework = detectFramework();
         this.classes = getFrameworkClasses(this.framework);
         this.columnSearches = {};                       // Individual column searches
@@ -99,6 +102,9 @@ export class ModernTable extends EventEmitter {
         searching: true,
         searchDelay: 200, // Reduced for better responsiveness
         columnSearch: false, // Individual column search
+        
+        // Server-side processing (DataTables compatible)
+        serverSide: false, // Enable server-side processing
         
         // Sorting
         ordering: true,
@@ -196,10 +202,16 @@ export class ModernTable extends EventEmitter {
             // Load saved state
             this.loadSavedState();
             
-            // Load data based on mode
+            // Load data based on mode (DataTables compatible)
             if (this.isClientSide) {
-                this.processClientSideData();
-            } else if (this.options.api) {
+                // Client-side: fetch all data once, then process locally
+                if (this.options.api && !this.options.data) {
+                    this.loadAllDataForClientSide();
+                } else {
+                    this.processClientSideData();
+                }
+            } else {
+                // Server-side: load data page by page
                 this.loadData();
             }
             
@@ -653,7 +665,7 @@ export class ModernTable extends EventEmitter {
                 className: 'form-control form-control-sm column-search-input',
                 placeholder: `Search ${column.title || column.data}...`,
                 'data-column': index,
-                style: 'width: 100%; min-width: 80px;'
+                style: 'box-sizing: border-box; min-width: 80px;'
             });
             
             // Add event listener with debounce
@@ -666,6 +678,36 @@ export class ModernTable extends EventEmitter {
         });
         
         this.thead.appendChild(searchRow);
+        
+        // Sync input widths with header columns after DOM is ready
+        setTimeout(() => {
+            this.syncColumnSearchWidths();
+        }, 100);
+    }
+    
+    /**
+     * Sync column search input widths with header columns
+     */
+    syncColumnSearchWidths() {
+        const headerCells = this.thead.querySelectorAll('tr:first-child th');
+        const searchInputs = this.thead.querySelectorAll('.column-search-input');
+        
+        searchInputs.forEach((input, index) => {
+            const columnIndex = parseInt(input.dataset.column);
+            let headerIndex = columnIndex;
+            
+            // Adjust for selection column
+            if (this.options.select) {
+                headerIndex = columnIndex + 1;
+            }
+            
+            const headerCell = headerCells[headerIndex];
+            if (headerCell) {
+                const headerWidth = headerCell.offsetWidth;
+                const padding = 16; // 8px left + 8px right padding
+                input.style.width = Math.max(headerWidth - padding, 80) + 'px';
+            }
+        });
     }
     
     /**
@@ -895,7 +937,50 @@ export class ModernTable extends EventEmitter {
     }
 
     /**
-     * Load data from API
+     * Load all data for client-side processing (like DataTables default)
+     */
+    async loadAllDataForClientSide() {
+        const apiUrl = typeof this.apiClient.config === 'string' ? this.apiClient.config : this.apiClient.config?.url;
+        if (!apiUrl) {
+            console.error('No API URL configured');
+            return;
+        }
+        
+        try {
+            this.showLoading(true);
+            
+            // Fetch all data at once (like DataTables client-side)
+            const response = await this.apiClient.request({});
+            
+            if (response.success !== false) {
+                // Store all data for client-side processing
+                if (Array.isArray(response)) {
+                    this.originalData = response;
+                } else if (response.data) {
+                    this.originalData = response.data;
+                } else {
+                    // Handle dataSrc transformation
+                    this.originalData = response;
+                }
+                
+                this.data = [...this.originalData];
+                this.totalRecords = this.originalData.length;
+                
+                // Process client-side
+                this.processClientSideData();
+            } else {
+                throw new Error(response.message || 'API returned error');
+            }
+        } catch (error) {
+            console.error('Failed to load data:', error);
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Load data from API (server-side processing)
      */
     async loadData() {
         const apiUrl = typeof this.apiClient.config === 'string' ? this.apiClient.config : this.apiClient.config?.url;
@@ -930,6 +1015,14 @@ export class ModernTable extends EventEmitter {
                     current_page: this.currentPage,
                     last_page: this.totalPages
                 });
+            // Emit initComplete event
+            this.emit('initComplete', this.data, {
+                total: this.totalRecords,
+                filtered: this.filteredRecords,
+                current_page: this.currentPage,
+                last_page: this.totalPages
+            });
+            
             if (this.options.initComplete) {
                 this.options.initComplete(this.data, {
                     total: this.totalRecords,
@@ -1148,6 +1241,13 @@ export class ModernTable extends EventEmitter {
                 recordsTotal: this.totalRecords,
                 recordsFiltered: this.filteredRecords
             });
+        }
+        
+        // Sync column search widths after rendering
+        if (this.options.columnSearch) {
+            setTimeout(() => {
+                this.syncColumnSearchWidths();
+            }, 50);
         }
         
         // Call footerCallback if footer exists
@@ -2539,29 +2639,24 @@ export class ModernTable extends EventEmitter {
     }
     
     /**
-     * Override search for client-side
+     * Search functionality (auto-detects client vs server-side)
      */
     search(term) {
+        this.currentPage = 1; // Reset to first page
+        
+        // Update search input if provided
+        if (term !== undefined && this.searchInput) {
+            this.searchInput.value = term;
+        }
+        
+        // Save state
+        if (this.stateManager && this.stateManager.isEnabled()) {
+            this.stateManager.save();
+        }
+        
         if (this.isClientSide) {
-            // Update search input if provided
-            if (term !== undefined && this.searchInput) {
-                this.searchInput.value = term;
-            }
-            
-            this.currentPage = 1; // Reset to first page
             this.processClientSideData();
         } else {
-            // Server-side search (original implementation)
-            this.currentPage = 1;
-            
-            if (term !== undefined && this.searchInput) {
-                this.searchInput.value = term;
-            }
-            
-            if (this.stateManager && this.stateManager.isEnabled()) {
-                this.stateManager.save();
-            }
-            
             this.loadData();
         }
     }

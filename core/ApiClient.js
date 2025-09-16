@@ -69,7 +69,13 @@ export class ApiClient {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
-            const data = await response.json();
+            let data = await response.json();
+            
+            // DataTables-compatible dataSrc transformation
+            if (this.config.dataSrc && typeof this.config.dataSrc === 'function') {
+                console.log('🔄 Applying dataSrc transformation');
+                data = this.config.dataSrc(data);
+            }
             
             // success callback
             if (this.config.success) {

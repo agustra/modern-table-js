@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Error Handling</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/modern-table.css" rel="stylesheet">
+  <link href="/responsive.css" rel="stylesheet">
+  <link href="/themes.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container mt-4">
+    <h2>⚠️ Test: Error Handling</h2>
+    <p class="text-muted">Testing error handling and graceful fallbacks</p>
+    
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5>Valid API (DummyJSON)</h5>
+          </div>
+          <div class="card-body">
+            <table id="valid-table" class="table table-striped"></table>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5>Invalid API (404 Error)</h5>
+          </div>
+          <div class="card-body">
+            <table id="error-table" class="table table-striped"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ModernTable } from "/core/ModernTable.js";
+
+    // Valid API Test
+    const validTable = new ModernTable("#valid-table", {
+      api: {
+        url: "https://dummyjson.com/users",
+        beforeRequest: async (config) => {
+          try {
+            const params = config.data || {};
+            const query = new URLSearchParams({
+              limit: params.length || 5,
+              skip: params.start || 0
+            });
+            config.url = `https://dummyjson.com/users?${query}`;
+            console.log("✅ Valid request:", config.url);
+            return config;
+          } catch (error) {
+            console.error("❌ Parameter transformation failed:", error);
+            throw new Error("Invalid request parameters");
+          }
+        },
+        dataSrc: function(json) {
+          try {
+            if (!json || !json.users) {
+              throw new Error("Invalid response format");
+            }
+            
+            return {
+              recordsTotal: json.total || 0,
+              recordsFiltered: json.total || 0,
+              data: json.users || []
+            };
+          } catch (error) {
+            console.error("❌ Response transformation error:", error);
+            return {
+              draw: 1,
+              recordsTotal: 0,
+              recordsFiltered: 0,
+              data: []
+            };
+          }
+        }
+      },
+      columns: [
+        { data: "id", title: "ID", width: "60px" },
+        { data: "firstName", title: "First Name" },
+        { data: "email", title: "Email" }
+      ],
+      serverSide: true,
+      pageLength: 5,
+      paging: true,
+      searching: true
+    });
+
+    // Error API Test
+    const errorTable = new ModernTable("#error-table", {
+      api: {
+        url: "https://invalid-api.com/users",
+        beforeRequest: async (config) => {
+          try {
+            const params = config.data || {};
+            config.url = `https://invalid-api.com/users?limit=${params.length || 5}`;
+            console.log("❌ Invalid request (will fail):", config.url);
+            return config;
+          } catch (error) {
+            console.error("❌ Parameter transformation failed:", error);
+            throw new Error("Invalid request parameters");
+          }
+        },
+        dataSrc: function(json) {
+          console.warn("⚠️ This should not be called for failed requests");
+          return {
+            recordsTotal: 0,
+            recordsFiltered: 0,
+            data: []
+          };
+        },
+        error: function(xhr, status, error) {
+          console.error("❌ API Error:", error);
+          // Return fallback data
+          return {
+            recordsTotal: 0,
+            recordsFiltered: 0,
+            data: []
+          };
+        }
+      },
+      columns: [
+        { data: "id", title: "ID", width: "60px" },
+        { data: "name", title: "Name" },
+        { data: "email", title: "Email" }
+      ],
+      serverSide: true,
+      pageLength: 5,
+      paging: true,
+      searching: true,
+      language: {
+        noData: "❌ API Error: Unable to load data"
+      }
+    });
+  </script>
+</body>
+</html>

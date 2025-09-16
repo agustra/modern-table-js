@@ -159,7 +159,35 @@ export class FilterPanel {
         });
         
         input.addEventListener('change', (e) => {
-            this.applyFilter(filter.column, e.target.value);
+            // Smart date range logic: only trigger when end_date has value
+            if (filter.column === 'start_date') {
+                // Store start_date but don't trigger filter yet
+                if (e.target.value) {
+                    this.filters[filter.column] = e.target.value;
+                } else {
+                    delete this.filters[filter.column];
+                }
+                
+                // Only trigger if end_date also has value
+                const endDateInput = document.querySelector('[data-filter="end_date"]');
+                if (endDateInput && endDateInput.value) {
+                    this.table.currentPage = 1;
+                    this.table.loadData();
+                }
+            } else if (filter.column === 'end_date') {
+                // Store end_date and trigger filter (regardless of start_date)
+                if (e.target.value) {
+                    this.filters[filter.column] = e.target.value;
+                } else {
+                    delete this.filters[filter.column];
+                }
+                
+                this.table.currentPage = 1;
+                this.table.loadData();
+            } else {
+                // For single date filters, apply immediately
+                this.applyFilter(filter.column, e.target.value);
+            }
         });
         
         container.appendChild(input);

@@ -45,8 +45,6 @@ ModernTable.js uses a 3-tier system:
 2. **Font Awesome** (if available) - Provides professional icons  
 3. **ModernTable.css** (always) - Fallback styling + table-specific features
 
-**Setup is covered in the main README.md - this guide focuses on customization.**
-
 ## 🎭 Icon System
 
 ### Smart Icon Detection
@@ -85,6 +83,13 @@ getBuiltinButton(type) {
 | PDF | `fas fa-file-pdf` | 📄 |
 | Print | `fas fa-print` | 🖨 |
 | Columns | `fas fa-columns` | ☰ |
+| Delete | `fas fa-trash` | 🗑 |
+| Edit | `fas fa-edit` | ✏ |
+| Add | `fas fa-plus` | ➕ |
+| Search | `fas fa-search` | 🔍 |
+| Filter | `fas fa-filter` | 🔽 |
+| Clear | `fas fa-eraser` | 🧹 |
+| Keyboard | `fas fa-keyboard` | ⌨ |
 
 ### CSS Icon Implementation
 ```css
@@ -330,7 +335,28 @@ buttons: [
 - ✅ Foundation (with custom classes)
 - ✅ Pure CSS (standalone mode)
 
----
+## Alternative Text-based Icons
+
+For maximum compatibility, ModernTable.css includes alternative text-based icons:
+
+```css
+.icon-sort::before { content: "⇅"; }
+.icon-sort-asc::before { content: "↑"; }
+.icon-sort-desc::before { content: "↓"; }
+.icon-copy::before { content: "⧉"; }
+.icon-csv::before { content: "≡"; }
+.icon-excel::before { content: "⊞"; }
+.icon-pdf::before { content: "⬜"; }
+.icon-print::before { content: "⎙"; }
+.icon-columns::before { content: "☰"; }
+.icon-delete::before { content: "✕"; }
+.icon-edit::before { content: "✎"; }
+.icon-add::before { content: "＋"; }
+.icon-search::before { content: "🔍"; }
+.icon-filter::before { content: "▼"; }
+.icon-clear::before { content: "⌫"; }
+.icon-keyboard::before { content: "⌨"; }
+```
 
 ## 🎉 Summary
 
