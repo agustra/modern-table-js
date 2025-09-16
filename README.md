@@ -6,6 +6,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CDN](https://img.shields.io/badge/CDN-jsDelivr-orange)](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/)
 
+## 📸 Screenshots
+
+### Desktop View
+![Desktop Bootstrap](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/screenshots/desktop-bootstrap.png)
+
+### Dark Mode
+![Desktop Dark](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/screenshots/desktop-dark.png)
+
+### Mobile Responsive
+![Mobile Responsive](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/screenshots/mobile-responsive.png)
+
 ## ✨ What's New in v1.0.7
 
 ✨ Features
@@ -29,19 +40,29 @@
 
 ## 🚀 Quick Start
 
-<!-- Option 1: With Bootstrap + Font Awesome (Recommended) -->
+### CDN (Recommended)
+
+```html
+<!-- CSS -->
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/responsive.css" rel="stylesheet">
+
+<!-- JavaScript (Minified) -->
+<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/dist/modern-table.min.js"></script>
+
+<!-- OR ES Module -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/core/ModernTable.js"></script>
+```
+
+### With Bootstrap + Font Awesome
+
+```html
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/modern-table.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/responsive.css" rel="stylesheet">
-
-<!-- Option 2: Standalone (Zero Dependencies) -->
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/themes.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/responsive.css" rel="stylesheet">
-
-<!-- JavaScript -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/core/ModernTable.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/dist/modern-table.min.js"></script>
+```
 
 ### NPM
 
