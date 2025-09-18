@@ -4,20 +4,20 @@
 
 [![npm version](https://badge.fury.io/js/modern-table-js.svg)](https://www.npmjs.com/package/modern-table-js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CDN](https://img.shields.io/badge/CDN-jsDelivr-orange)](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/)
+[![CDN](https://img.shields.io/badge/CDN-jsDelivr-orange)](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/)
 
 ## 📸 Screenshots
 
 ### Desktop View
-![Desktop Bootstrap](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/screenshots/desktop-bootstrap.png)
+![Desktop Bootstrap](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/screenshots/desktop-bootstrap.png)
 
 ### Dark Mode
-![Desktop Dark](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/screenshots/desktop-dark.png)
+![Desktop Dark](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/screenshots/desktop-dark.png)
 
 ### Mobile Responsive
-![Mobile Responsive](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/screenshots/mobile-responsive.png)
+![Mobile Responsive](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/screenshots/mobile-responsive.png)
 
-## ✨ What's New in v1.0.9
+## ✨ What's New in v1.0.10
 
 ✨ Features
 🚀 Zero Dependencies - Pure vanilla JavaScript
@@ -44,15 +44,15 @@
 
 ```html
 <!-- CSS -->
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/responsive.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/themes.css" rel="stylesheet"> <!-- Required for dark mode -->
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/themes.css" rel="stylesheet"> <!-- Required for dark mode -->
 
 <!-- JavaScript (Minified) -->
-<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/dist/modern-table.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/dist/modern-table.min.js"></script>
 
 <!-- OR ES Module -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/core/ModernTable.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/core/ModernTable.js"></script>
 ```
 
 ### With Bootstrap + Font Awesome
@@ -60,10 +60,10 @@
 ```html
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/modern-table.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/responsive.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/themes.css" rel="stylesheet"> <!-- For dark mode -->
-<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.9/dist/modern-table.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/modern-table.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/responsive.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/themes.css" rel="stylesheet"> <!-- For dark mode -->
+<script src="https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/dist/modern-table.min.js"></script>
 ```
 
 ### NPM

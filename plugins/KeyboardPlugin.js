@@ -220,7 +220,7 @@ export class KeyboardPlugin {
 
     copySelected() {
         if (this.table.plugins.export) {
-            this.table.plugins.export.copySelected();
+            this.table.plugins.export.copyToClipboard();
         }
     }
 

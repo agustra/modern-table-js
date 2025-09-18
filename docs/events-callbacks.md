@@ -574,7 +574,7 @@ const table = new ModernTable('#userTable', {
       ...data,
       userId: getCurrentUserId(),
       timestamp: Date.now(),
-      version: '1.0.7'
+      version: '1.0.10'
     };
     
     // Save to localStorage

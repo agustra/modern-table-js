@@ -265,7 +265,20 @@ function escapeHtml(text) {
  * Show notification
  */
 export function showNotification(message, type = 'success') {
-    // Create notification element
+    // Check if we're in no-bootstrap mode
+    const isNoBootstrap = document.querySelector('.modern-table-wrapper.no-bootstrap');
+    
+    if (isNoBootstrap) {
+        showCustomNotification(message, type);
+    } else {
+        showBootstrapNotification(message, type);
+    }
+}
+
+/**
+ * Show Bootstrap notification
+ */
+function showBootstrapNotification(message, type) {
     const notification = document.createElement('div');
     notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
     notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
@@ -276,10 +289,65 @@ export function showNotification(message, type = 'success') {
     
     document.body.appendChild(notification);
     
-    // Auto remove after 3 seconds
     setTimeout(() => {
         if (notification.parentNode) {
             notification.parentNode.removeChild(notification);
         }
     }, 3000);
+}
+
+/**
+ * Show custom notification (no Bootstrap)
+ */
+function showCustomNotification(message, type) {
+    // Create or get notification container
+    let container = document.querySelector('.modern-table-notifications');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'modern-table-notifications';
+        document.body.appendChild(container);
+    }
+    
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = `modern-table-notification ${type}`;
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close';
+    closeBtn.innerHTML = '×';
+    closeBtn.onclick = () => hideNotification(notification);
+    
+    // Create progress bar
+    const progress = document.createElement('div');
+    progress.className = 'progress';
+    const progressBar = document.createElement('div');
+    progressBar.className = 'progress-bar';
+    progress.appendChild(progressBar);
+    
+    // Set content
+    notification.innerHTML = `<span>${message}</span>`;
+    notification.appendChild(closeBtn);
+    notification.appendChild(progress);
+    
+    // Add to container
+    container.appendChild(notification);
+    
+    // Show animation
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    // Auto hide after 5 seconds
+    setTimeout(() => hideNotification(notification), 5000);
+}
+
+/**
+ * Hide notification with animation
+ */
+function hideNotification(notification) {
+    notification.classList.add('hide');
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 300);
 }

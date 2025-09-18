@@ -88,7 +88,7 @@ const table = new ModernTable('#myTable', {
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       userId: getCurrentUserId(),
-      tableVersion: '1.0.7'
+      tableVersion: '1.0.10'
     };
     
     // Save to custom storage
@@ -274,7 +274,7 @@ const table = new ModernTable('#myTable', {
     
     // Migrate old state format
     if (!state.version) {
-      // Version 1.0.7 migration example
+      // Version 1.0.10 migration example
       if (state.columnVisibility) {
         // Convert old columnVisibility format
         state.columns = Object.keys(state.columnVisibility).map(index => ({
@@ -284,7 +284,7 @@ const table = new ModernTable('#myTable', {
         delete state.columnVisibility;
       }
       
-      state.version = '1.0.7';
+      state.version = '1.0.10';
       
       // Save migrated state
       localStorage.setItem(this.storageKey, JSON.stringify(state));

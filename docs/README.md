@@ -34,7 +34,7 @@ Complete documentation for ModernTable.js - Modern, lightweight, vanilla JavaScr
 
 - [GitHub Repository](https://github.com/agustra/modern-table-js)
 - [NPM Package](https://www.npmjs.com/package/modern-table-js)
-- [CDN (jsDelivr)](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.7/)
+- [CDN (jsDelivr)](https://cdn.jsdelivr.net/npm/modern-table-js@1.0.10/)
 - [Issues & Support](https://github.com/agustra/modern-table-js/issues)
 
 ## 📝 License
