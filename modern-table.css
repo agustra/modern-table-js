@@ -194,8 +194,11 @@ Toolbar container
   background: #f8f9fa;
 }
 
+/* =====================================
+   VISIBILITY
+   ===================================== */
 /* VISIBILITY */
-.modern-table-wrapper.no-bootstrap .column-visibility-dropdown button {
+.modern-table-wrapper .column-visibility-dropdown button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -226,6 +229,9 @@ Toolbar container
   transform: scale(0.98);
 }
 
+/* =====================================
+   TOOLBAR RIGHT (SEARCH)
+   ===================================== */
 /* Toolbar Right (Search) */
 .modern-table-wrapper.no-bootstrap .toolbar-right {
   position: relative;
